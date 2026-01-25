@@ -1,4 +1,5 @@
 from clearml import Task
+
 created_task = Task.create(
     project_name = "AmSC",
     task_name = "PBS Demo",
@@ -6,4 +7,4 @@ created_task = Task.create(
 )
 
 created_task.set_user_properties(num_nodes=1, walltime=60)
-Task.enqueue(created_task, queue_name="polaris")
+Task.enqueue(created_task, queue_name="default")
