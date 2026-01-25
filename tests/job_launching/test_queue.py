@@ -6,4 +6,4 @@ created_task = Task.create(
 )
 
 created_task.set_user_properties(num_nodes=1, walltime=60)
-Task.enqueue(created_task, queue_name="default")
+Task.enqueue(created_task, queue_name="polaris")

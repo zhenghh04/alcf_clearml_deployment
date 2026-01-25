@@ -8,4 +8,4 @@ export K8S_GLUE_POD_AGENT_INSTALL_ARGS="==2.0.7rc5"
 
 export PATH=/home/hzheng/clearml/miniconda3/bin/:$PATH
 
-clearml-agent-slurm --template-files ${CLIENT}/pbs.template --queue default --use-pbs
+clearml-agent-slurm --template-files ${CLIENT}/pbs.template --queue ${QUEUE:-$CLIENT} --use-pbs

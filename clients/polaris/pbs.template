@@ -6,6 +6,7 @@
 #PBS -V 
 #PBS -A datascience
 #PBS -l filesystems=home:eagle
+#PBS -q preemptable 
 
 ${CLEARML_PRE_SETUP}
 
