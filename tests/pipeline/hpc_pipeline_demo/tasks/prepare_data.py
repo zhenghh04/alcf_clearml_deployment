@@ -6,5 +6,6 @@ task = Task.init(
     task_name="prepare-data",
     task_type=Task.TaskTypes.data_processing,
 )
+task.set_base_docker(docker_image=None)
 
 print("Preparing data...")

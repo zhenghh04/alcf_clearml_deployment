@@ -7,6 +7,7 @@ def main():
         project="amsc/pipeline-demo",
         version="1.0",
         add_pipeline_tags=True,
+        docker=None,
     )
 
     # Optional: default queue (fallback)

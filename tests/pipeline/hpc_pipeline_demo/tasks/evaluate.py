@@ -6,5 +6,5 @@ task = Task.init(
     task_name="evaluate-model",
     task_type=Task.TaskTypes.testing,
 )
-
+task.set_base_docker(docker_image=None)
 print("Evaluating model...")
