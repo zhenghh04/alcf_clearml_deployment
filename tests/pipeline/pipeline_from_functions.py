@@ -99,6 +99,6 @@ if __name__ == '__main__':
     # pipe.start_locally(run_pipeline_steps_locally=False)
 
     # Start the pipeline on the services queue (remote machine, default on the clearml-server)
-    pipe.start()
+    pipe.start(queue='crux')
 
     print('pipeline completed')

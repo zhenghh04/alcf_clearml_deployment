@@ -4,7 +4,8 @@ created_task = Task.create(
     project_name = "AmSC",
     task_name = "PBS Demo bash",
     script = "./run.sh",
-    binary = "/bin/bash"
+    binary = "/bin/bash",
+    force_single_script_file = True
 )
 created_task.set_user_properties(
     walltime="00:10:00",

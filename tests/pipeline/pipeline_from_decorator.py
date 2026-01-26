@@ -1,11 +1,12 @@
 from clearml.automation.controller import PipelineDecorator
 from clearml import TaskTypes
-
-
+import os
+os.environ["CLEARML_AGENT_SKIP_PIP_VENV_INSTALL"] = "/home/hzheng/clearml/miniconda3/bin/python"
+os.environ['CLEARML_AGENT_SKIP_PYTHON_ENV_INSTALL']=str(1)
 # Make the following function an independent pipeline component step
 # notice all package imports inside the function will be automatically logged as
 # required packages for the pipeline execution step
-@PipelineDecorator.component(return_values=["data_frame"], cache=True, task_type=TaskTypes.data_processing)
+@PipelineDecorator.component(return_values=["data_frame"], cache=True, task_type=TaskTypes.data_processing, execution_queue=None)
 def step_one(pickle_data_url: str, extra: int = 43):
     print("step_one")
     # make sure we have scikit-learn for this step, we need it to use to unpickle the object
@@ -29,7 +30,7 @@ def step_one(pickle_data_url: str, extra: int = 43):
 # Specifying `return_values` makes sure the function step can return an object to the pipeline logic
 # In this case, the returned tuple will be stored as an artifact named "X_train, X_test, y_train, y_test"
 @PipelineDecorator.component(
-    return_values=["X_train", "X_test", "y_train", "y_test"], cache=True, task_type=TaskTypes.data_processing
+    return_values=["X_train", "X_test", "y_train", "y_test"], cache=True, task_type=TaskTypes.data_processing, execution_queue='crux'
 )
 def step_two(data_frame, test_size=0.2, random_state=42):
     print("step_two")
@@ -49,7 +50,7 @@ def step_two(data_frame, test_size=0.2, random_state=42):
 # required packages for the pipeline execution step
 # Specifying `return_values` makes sure the function step can return an object to the pipeline logic
 # In this case, the returned object will be stored as an artifact named "model"
-@PipelineDecorator.component(return_values=["model"], cache=True, task_type=TaskTypes.training)
+@PipelineDecorator.component(return_values=["model"], cache=True, task_type=TaskTypes.training, execution_queue='crux')
 def step_three(X_train, y_train):
     print("step_three")
     # make sure we have pandas for this step, we need it to use the data_frame
@@ -66,7 +67,7 @@ def step_three(X_train, y_train):
 # required packages for the pipeline execution step
 # Specifying `return_values` makes sure the function step can return an object to the pipeline logic
 # In this case, the returned object will be stored as an artifact named "accuracy"
-@PipelineDecorator.component(return_values=["accuracy"], cache=True, task_type=TaskTypes.qc)
+@PipelineDecorator.component(return_values=["accuracy"], cache=True, task_type=TaskTypes.qc, execution_queue='crux')
 def step_four(model, X_data, Y_data):
     from sklearn.linear_model import LogisticRegression  # noqa
     from sklearn.metrics import accuracy_score
@@ -114,7 +115,9 @@ if __name__ == "__main__":
     # PipelineDecorator.set_default_execution_queue('default')
     # Run the pipeline steps as subprocesses on the current machine, great for local executions
     # (for easy development / debugging, use `PipelineDecorator.debug_pipeline()` to execute steps as regular functions)
-    PipelineDecorator.run_locally()
+    #PipelineDecorator.set_default_execution_queue('crux')
+    #PipelineDecorator.run_locally()
+    #PipelineDecorator.run()
 
     # Start the pipeline execution logic.
     executing_pipeline(
