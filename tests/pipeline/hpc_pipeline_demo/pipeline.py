@@ -1,4 +1,5 @@
 from clearml import PipelineController
+from clearml import Task
 
 
 def main():
@@ -12,6 +13,7 @@ def main():
 
     # Optional: default queue (fallback)
     pipe.set_default_execution_queue("sirius-login")
+    
 
     # ---- Step 1: Prepare data ----
     pipe.add_step(

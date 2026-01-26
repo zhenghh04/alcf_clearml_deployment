@@ -115,7 +115,7 @@ if __name__ == "__main__":
     # PipelineDecorator.set_default_execution_queue('default')
     # Run the pipeline steps as subprocesses on the current machine, great for local executions
     # (for easy development / debugging, use `PipelineDecorator.debug_pipeline()` to execute steps as regular functions)
-    #PipelineDecorator.set_default_execution_queue('crux')
+    PipelineDecorator.set_default_execution_queue('sirius-login')
     #PipelineDecorator.run_locally()
     #PipelineDecorator.run()
 
