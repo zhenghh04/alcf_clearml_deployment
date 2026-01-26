@@ -6,7 +6,7 @@
 #PBS -V 
 #PBS -A ${CLEARML_TASK.hyperparams.properties.account.value:datascience}
 #PBS -q ${CLEARML_TASK.hyperparams.properties.queue.value:workq}
-#PBS -l filesystems=${CLEARML_TASK.hyperparams.filesystems.value:home:eagle}
+#PBS -l filesystems=${CLEARML_TASK.hyperparams.filesystems.value:home:tegu}
 
 ${CLEARML_PRE_SETUP}
 
