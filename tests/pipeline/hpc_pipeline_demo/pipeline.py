@@ -1,0 +1,48 @@
+from clearml import PipelineController
+
+
+def main():
+    pipe = PipelineController(
+        name="example-hpc-pipeline",
+        project="amsc/pipeline-demo",
+        version="1.0",
+        add_pipeline_tags=True,
+    )
+
+    # Optional: default queue (fallback)
+    pipe.set_default_execution_queue("sirius-login")
+
+    # ---- Step 1: Prepare data ----
+    pipe.add_step(
+        name="prepare_data",
+        base_task_project="amsc/pipeline-demo",
+        base_task_name="prepare-data",
+        execution_queue="sirius-login",
+    )
+
+    # ---- Step 2: Train ----
+    pipe.add_step(
+        name="train",
+        base_task_project="amsc/pipeline-demo",
+        base_task_name="train-model",
+        execution_queue="sirius",
+        parents=["prepare_data"],
+    )
+
+    # ---- Step 3: Evaluate ----
+    pipe.add_step(
+        name="evaluate",
+        base_task_project="amsc/pipeline-demo",
+        base_task_name="evaluate-model",
+        execution_queue="sirius",
+        parents=["train"],
+    )
+
+    # Start execution
+    pipe.start()
+
+    print(f"Pipeline started: {pipe.id}")
+
+
+if __name__ == "__main__":
+    main()
