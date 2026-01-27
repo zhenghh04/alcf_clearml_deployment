@@ -6,7 +6,7 @@ os.environ['CLEARML_AGENT_SKIP_PYTHON_ENV_INSTALL']=str(1)
 # Make the following function an independent pipeline component step
 # notice all package imports inside the function will be automatically logged as
 # required packages for the pipeline execution step
-@PipelineDecorator.component(return_values=["data_frame"], cache=True, task_type=TaskTypes.data_processing, execution_queue=None)
+@PipelineDecorator.component(return_values=["data_frame"], cache=True, task_type=TaskTypes.data_processing, execution_queue='sirisus-login')
 def step_one(pickle_data_url: str, extra: int = 43):
     print("step_one")
     # make sure we have scikit-learn for this step, we need it to use to unpickle the object
