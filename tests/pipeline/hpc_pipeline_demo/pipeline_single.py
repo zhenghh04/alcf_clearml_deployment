@@ -5,8 +5,8 @@ prepare_task = Task.create(
     project_name="amsc/pipeline-demo",
     task_name="prepare-data",
     task_type=Task.TaskTypes.data_processing,
-    script="./tasks/prepare_data.sh",
-    binary="/bin/bash",
+    script="./tasks/prepare_data.py",
+    force_single_script_file = True
 )
 train_task = Task.create(
     project_name="amsc/pipeline-demo",
@@ -14,6 +14,7 @@ train_task = Task.create(
     task_type=Task.TaskTypes.training,
     script="./tasks/train.sh",
     binary="/bin/bash",
+    force_single_script_file = True
 )
 eval_task = Task.create(
     project_name="amsc/pipeline-demo",
@@ -21,6 +22,7 @@ eval_task = Task.create(
     task_type=Task.TaskTypes.testing,
     script="./tasks/evaluate.sh",
     binary="/bin/bash",
+    force_single_script_file = True
 )
 
 # 2) Build pipeline using task IDs

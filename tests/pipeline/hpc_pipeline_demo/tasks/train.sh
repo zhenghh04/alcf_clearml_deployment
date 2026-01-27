@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 echo "`date`  Training model..."
-python resnet50.py \
+python tasks/resnet50.py \
   --data-dir "${CIFAR10_DIR:-$HOME/clearml/alcf_clearml_evaluation/tests/hpc_pipeline_demo/}" \
   --epochs 1 \
   --batch-size 128 \
