@@ -43,7 +43,6 @@ def stage_metadata(cfg: dict) -> dict:
 )
 def run_mpi(cfg: dict) -> dict:
     task = Task.current_task()
-
     # Tell Slurm how many resources we want
     task.set_user_properties(
         nodes=cfg["nodes"],
@@ -84,5 +83,5 @@ def pipeline():
     collect_results(cfg)
 
 if __name__ == "__main__":
-    #PipelineDecorator.run_locally()
+    PipelineDecorator.run_locally()
     pipeline()
