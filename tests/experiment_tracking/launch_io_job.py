@@ -13,12 +13,6 @@ def main():
         force_single_script_file=True,
     )
     queue_name = os.environ.get("QUEUE", "default")
-    created_task.set_environment({
-    "OPENBLAS_NUM_THREADS": "1",
-    "OMP_NUM_THREADS": "1",
-    "MKL_NUM_THREADS": "1",
-    "NUMEXPR_NUM_THREADS": "1",
-    })
     Task.enqueue(created_task, queue_name=queue_name)
 
 
