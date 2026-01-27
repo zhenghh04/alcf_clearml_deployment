@@ -33,18 +33,18 @@ pipe = PipelineController(
 pipe.add_step(
     name="prepare_data",
     base_task_id=prepare_task.id,
-    execution_queue="sirius-login",
+    execution_queue="sophia-login",
 )
 pipe.add_step(
     name="train",
     base_task_id=train_task.id,
-    execution_queue="sirius-login",
+    execution_queue="sophia-login",
     parents=["prepare_data"],
 )
 pipe.add_step(
     name="evaluate",
     base_task_id=eval_task.id,
-    execution_queue="sirius-login",
+    execution_queue="sophia-login",
     parents=["train"],
 )
 
