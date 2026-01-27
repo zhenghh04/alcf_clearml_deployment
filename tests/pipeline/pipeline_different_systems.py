@@ -65,12 +65,12 @@ def step_aurora() -> dict:
 @PipelineDecorator.pipeline(
     name="pipeline_different_system",
     project="AmSC",
-    docker="python:3.13-slim",
+    docker="python:3.10-slim",
 )
 def pipeline():
     task = Task.current_task()
     if task:
-        task.set_packages(["clearml==2.1.3", "torchvision==0.15.2", "torch==2.10"])
+        task.set_packages([])
     step_local()
     step_sirius()
     step_sophia()
