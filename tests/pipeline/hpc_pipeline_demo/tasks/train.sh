@@ -2,7 +2,7 @@
 set -euo pipefail
 echo "`date`  Training model..."
 python resnet50.py \
-  --data-dir "${CIFAR10_DIR:-/tmp/cifar10}" \
+  --data-dir "${CIFAR10_DIR:-/tmp/cifar10_download}" \
   --epochs 1 \
   --batch-size 128 \
   --lr 0.01 \

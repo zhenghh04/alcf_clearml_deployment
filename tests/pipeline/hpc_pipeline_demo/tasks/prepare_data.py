@@ -3,7 +3,7 @@ from __future__ import print_function
 import os
 import tarfile
 import urllib.request
-from clearml import Task
+from clearml import Task, Dataset
 
 
 def _download(url, dest_path):
@@ -44,6 +44,21 @@ def main():
     _download(url, tar_path)
     _extract(tar_path, data_dir)
     print("CIFAR-10 available at:", data_dir)
+
+    dataset_name = os.environ.get("CIFAR10_DATASET_NAME", "cifar10")
+    dataset_project = os.environ.get("CIFAR10_DATASET_PROJECT", "amsc/pipeline-demo")
+    dataset_version = os.environ.get("CIFAR10_DATASET_VERSION")
+
+    print("Uploading dataset to ClearML fileserver...")
+    dataset = Dataset.create(
+        dataset_name=dataset_name,
+        dataset_project=dataset_project,
+        dataset_version=dataset_version,
+    )
+    dataset.add_files(path=data_dir, recursive=True)
+    dataset.upload()
+    dataset.finalize()
+    print("Dataset uploaded:", dataset.id)
 
 
 if __name__ == "__main__":
