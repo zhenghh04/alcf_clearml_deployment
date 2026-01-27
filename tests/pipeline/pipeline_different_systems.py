@@ -1,8 +1,10 @@
 from clearml.automation import PipelineDecorator
 from clearml import Task
+import os
+os.environ.setdefault("CLEARML_AGENT_SKIP_PYTHON_ENV_INSTALL", "1")
+os.environ.setdefault("CLEARML_AGENT_SKIP_PIP_VENV_INSTALL", "/usr/bin/python3")
 import subprocess
 import json
-import os
 
 # ------------------------
 # Step 0: local
@@ -88,6 +90,9 @@ def collect_results(cfg: dict):
     docker="python:3.12-slim",
 )
 def pipeline():
+    task = Task.current_task()
+    if task:
+        task.set_packages([])
     cfg = generate_config()
     cfg = stage_metadata(cfg)
     cfg = run_mpi(cfg)

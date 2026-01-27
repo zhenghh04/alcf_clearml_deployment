@@ -1,14 +1,16 @@
 from clearml.automation.controller import PipelineDecorator
 from clearml import TaskTypes
+import os
+os.environ.setdefault("CLEARML_AGENT_SKIP_PYTHON_ENV_INSTALL", "1")
+os.environ.setdefault("CLEARML_AGENT_SKIP_PIP_VENV_INSTALL", "/usr/bin/python3")
 
 # Make the following function an independent pipeline component step
 # notice all package imports inside the function will be automatically logged as
 # required packages for the pipeline execution step
 @PipelineDecorator.component(
     return_values=["data_frame"],
-    cache=True,
+    cache=False,
     task_type=TaskTypes.data_processing,
-    execution_queue="sirius-login",
     docker="python:3.12-slim",
     packages=["clearml==2.1.2", "pandas==2.1.4", "scikit-learn==1.6.1"],
     execution_queue="sirius-login"
@@ -37,12 +39,11 @@ def step_one(pickle_data_url: str, extra: int = 43):
 # In this case, the returned tuple will be stored as an artifact named "X_train, X_test, y_train, y_test"
 @PipelineDecorator.component(
     return_values=["X_train", "X_test", "y_train", "y_test"],
-    cache=True,
+    cache=False,
     task_type=TaskTypes.data_processing,
-    execution_queue="crux",
     docker="python:3.12-slim",
     packages=["clearml==2.1.2", "pandas==2.1.4", "scikit-learn==1.6.1"],
-    execution_queue="sirius"
+    execution_queue="sirius-login"
 )
 def step_two(data_frame, test_size=0.2, random_state=42):
     print("step_two")
@@ -64,12 +65,11 @@ def step_two(data_frame, test_size=0.2, random_state=42):
 # In this case, the returned object will be stored as an artifact named "model"
 @PipelineDecorator.component(
     return_values=["model"],
-    cache=True,
+    cache=False,
     task_type=TaskTypes.training,
-    execution_queue="crux",
     docker="python:3.12-slim",
     packages=["clearml==2.1.2", "pandas==2.1.4", "scikit-learn==1.6.1"],
-    execution_queue="sirius"
+    execution_queue="sirius-login"
 )
 def step_three(X_train, y_train):
     print("step_three")
@@ -89,12 +89,11 @@ def step_three(X_train, y_train):
 # In this case, the returned object will be stored as an artifact named "accuracy"
 @PipelineDecorator.component(
     return_values=["accuracy"],
-    cache=True,
+    cache=False,
     task_type=TaskTypes.qc,
-    execution_queue="crux",
     docker="python:3.12-slim",
     packages=["clearml==2.1.2", "scikit-learn==1.6.1"],
-    execution_queue="sirius"
+    execution_queue="sirius-login"
 )
 def step_four(model, X_data, Y_data):
     from sklearn.linear_model import LogisticRegression  # noqa
@@ -107,8 +106,12 @@ def step_four(model, X_data, Y_data):
 # The actual pipeline execution context
 # notice that all pipeline component function calls are actually executed remotely
 # Only when a return value is used, the pipeline logic will wait for the component execution to complete
-@PipelineDecorator.pipeline(name="custom pipeline logic", project="examples", version="0.0.5", docker="python:3.12-slim")
+@PipelineDecorator.pipeline(name="custom pipeline logic", project="examples", version="0.0.6", docker="python:3.12-slim")
 def executing_pipeline(pickle_url, mock_parameter="mock"):
+    from clearml import Task
+    task = Task.current_task()
+    if task:
+        task.set_packages([])
     print("pipeline args:", pickle_url, mock_parameter)
 
     # Use the pipeline argument to start the pipeline and pass it ot the first step

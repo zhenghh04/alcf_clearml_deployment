@@ -1,4 +1,7 @@
 from clearml import PipelineController
+import os
+os.environ.setdefault("CLEARML_AGENT_SKIP_PYTHON_ENV_INSTALL", "1")
+os.environ.setdefault("CLEARML_AGENT_SKIP_PIP_VENV_INSTALL", "/usr/bin/python3")
 # We will use the following function an independent pipeline component step
 # notice all package imports inside the function will be automatically logged as
 # required packages for the pipeline execution step
@@ -72,7 +75,7 @@ if __name__ == '__main__':
         function=step_one,
         function_kwargs=dict(pickle_data_url='${pipeline.url}'),
         function_return=['data_frame'],
-        cache_executed_step=True,
+        cache_executed_step=False,
         packages=["clearml==2.1.2", "pandas==2.1.4", "scikit-learn==1.6.1"],
     )
     pipe.add_function_step(
@@ -81,7 +84,7 @@ if __name__ == '__main__':
         function=step_two,
         function_kwargs=dict(data_frame='${step_one.data_frame}'),
         function_return=['processed_data'],
-        cache_executed_step=True,
+        cache_executed_step=False,
         packages=["clearml==2.1.2", "pandas==2.1.4", "scikit-learn==1.6.1"],
     )
     pipe.add_function_step(
@@ -90,7 +93,7 @@ if __name__ == '__main__':
         function=step_three,
         function_kwargs=dict(data='${step_two.processed_data}'),
         function_return=['model'],
-        cache_executed_step=True,
+        cache_executed_step=False,
         packages=["clearml==2.1.2", "pandas==2.1.4", "scikit-learn==1.6.1"],
     )
 
