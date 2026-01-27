@@ -12,52 +12,57 @@ import socket
 # ------------------------
 
 @PipelineDecorator.component(
-    execution_queue=None,
+    execution_queue='zion',
     docker="python:3.13-slim",
     packages=["clearml==2.1.3"],
 )
-def step_local() -> dict:
+def step_local(previous) -> dict:
     print("Logging to system and writing hello_clearml.txt on home directory")
     f = open(os.path.expanduser("~/hello_clearml.txt"), "w")
     datetime = subprocess.check_output(["date"]).decode("utf-8").strip()
     f.write(f"Hello ClearML on {socket.gethostname()}! Current date and time is: {datetime}\n")
     f.close()
+    return previous + 1
+    
 
 @PipelineDecorator.component(
     execution_queue="sirius-login",
     docker="python:3.13-slim",
     packages=["clearml==2.1.3"],
 )
-def step_sirius() -> dict:
+def step_sirius(previous) -> dict:
     print("Logging to system and writing hello_clearml.txt on home directory")
     f = open(os.path.expanduser("~/hello_clearml.txt"), "w")
     datetime = subprocess.check_output(["date"]).decode("utf-8").strip()
     f.write(f"Hello ClearML on {socket.gethostname()}! Current date and time is: {datetime}\n")
     f.close()
+    return previous + 1
 
 @PipelineDecorator.component(
     execution_queue="sophia-login",
     docker="python:3.13-slim",
     packages=["clearml==2.1.3"],
 )
-def step_sophia() -> dict:
+def step_sophia(previous) -> dict:
     print("Logging to system and writing hello_clearml.txt on home directory")
     f = open(os.path.expanduser("~/hello_clearml.txt"), "w")
     datetime = subprocess.check_output(["date"]).decode("utf-8").strip()
     f.write(f"Hello ClearML on {socket.gethostname()}! Current date and time is: {datetime}\n")
     f.close()
+    return previous + 1
 
 @PipelineDecorator.component(
     execution_queue="aurora-login",
     docker="python:3.13-slim",
     packages=["clearml==2.1.3"],
 )
-def step_aurora() -> dict:
+def step_aurora(previous) -> dict:
     print("Logging to system and writing hello_clearml.txt on home directory")
     f = open(os.path.expanduser("~/hello_clearml.txt"), "w")
     datetime = subprocess.check_output(["date"]).decode("utf-8").strip()
     f.write(f"Hello ClearML on {socket.gethostname()}! Current date and time is: {datetime}\n")
     f.close()
+    return previous + 1
 
 # ------------------------
 # Pipeline definition
@@ -71,10 +76,10 @@ def pipeline():
     task = Task.current_task()
     if task:
         task.set_packages([])
-    step_local()
-    step_sirius()
-    step_sophia()
-    step_aurora()
+    a = step_local(0)
+    b = step_sirius(a)
+    c = step_sophia(b)
+    d = step_aurora(b)
 
 if __name__ == "__main__":
     #PipelineDecorator.run_locally()

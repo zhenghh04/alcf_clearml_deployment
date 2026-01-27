@@ -1,0 +1,15 @@
+#!/bin/bash
+#PBS -N clearml_${CLEARML_TASK.id}
+#PBS -l walltime=${CLEARML_TASK.hyperparams.properties.walltime.value:01:00:00}
+#PBS -l select=${CLEARML_TASK.hyperparams.properties.num_nodes.value:1}:ncpus=1
+#PBS -l place=scatter
+#PBS -V 
+#PBS -A ${CLEARML_TASK.hyperparams.properties.account.value:datascience}
+#PBS -q ${CLEARML_TASK.hyperparams.properties.queue.value:workq}
+#PBS -l filesystems=${CLEARML_TASK.hyperparams.filesystems.value:home:flare}
+
+${CLEARML_PRE_SETUP}
+
+${CLEARML_AGENT_EXECUTE}
+
+${CLEARML_POST_SETUP}
