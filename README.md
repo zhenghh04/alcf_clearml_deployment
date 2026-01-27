@@ -2,7 +2,6 @@
 
 Author: Huihuo Zheng
 
-## What this repo is
 This repository contains setup scripts and example tests for evaluating ClearML (server + agents) on ALCF systems. It includes server setup notes/scripts, client/agent scripts and templates for different ALCF systems, and example tests for job launching, pipelines, experiment tracking, and datasets.
 
 ## Repository layout
