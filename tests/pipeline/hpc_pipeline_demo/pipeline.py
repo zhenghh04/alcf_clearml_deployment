@@ -20,7 +20,7 @@ def main():
         name="prepare_data",
         base_task_project="amsc/pipeline-demo",
         base_task_name="prepare-data",
-        execution_queue="sirius-login",
+        execution_queue="sophia-login",
     )
 
     # ---- Step 2: Train ----
@@ -28,7 +28,7 @@ def main():
         name="train",
         base_task_project="amsc/pipeline-demo",
         base_task_name="train-model",
-        execution_queue="sirius",
+        execution_queue="sophia-login",
         parents=["prepare_data"],
     )
 
@@ -37,7 +37,7 @@ def main():
         name="evaluate",
         base_task_project="amsc/pipeline-demo",
         base_task_name="evaluate-model",
-        execution_queue="sirius",
+        execution_queue="sophia-login",
         parents=["train"],
     )
 
