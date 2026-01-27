@@ -82,8 +82,8 @@ def main():
 
     train_root = args.data_dir
     test_root = args.data_dir
-    train_set = datasets.CIFAR10(root=train_root, train=True, download=args.download, transform=transform_train)
-    test_set = datasets.CIFAR10(root=test_root, train=False, download=args.download, transform=transform_test)
+    train_set = datasets.CIFAR10(root=train_root, train=True, download=True, transform=transform_train)
+    test_set = datasets.CIFAR10(root=test_root, train=False, download=True, transform=transform_test)
 
     train_loader = DataLoader(
         train_set, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True
