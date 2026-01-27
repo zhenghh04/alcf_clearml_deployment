@@ -5,21 +5,21 @@ prepare_task = Task.create(
     project_name="amsc/pipeline-demo",
     task_name="prepare-data",
     task_type=Task.TaskTypes.data_processing,
-    script="tests/pipeline/hpc_pipeline_demo/tasks/prepare_data.sh",
+    script="./tasks/prepare_data.sh",
     binary="/bin/bash",
 )
 train_task = Task.create(
     project_name="amsc/pipeline-demo",
     task_name="train-model",
     task_type=Task.TaskTypes.training,
-    script="tests/pipeline/hpc_pipeline_demo/tasks/train.sh",
+    script="./tasks/train.sh",
     binary="/bin/bash",
 )
 eval_task = Task.create(
     project_name="amsc/pipeline-demo",
     task_name="evaluate-model",
     task_type=Task.TaskTypes.testing,
-    script="tests/pipeline/hpc_pipeline_demo/tasks/evaluate.sh",
+    script="./tasks/evaluate.sh",
     binary="/bin/bash",
 )
 
