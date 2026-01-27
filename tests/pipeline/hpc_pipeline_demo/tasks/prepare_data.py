@@ -1,8 +1,8 @@
 from __future__ import print_function
 
 import os
+import subprocess
 import tarfile
-import urllib.request
 from clearml import Task, Dataset
 
 
@@ -10,7 +10,7 @@ def _download(url, dest_path):
     if os.path.exists(dest_path):
         return dest_path
     os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-    urllib.request.urlretrieve(url, dest_path)
+    subprocess.check_call(["wget", "-O", dest_path, url])
     return dest_path
 
 
