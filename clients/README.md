@@ -30,6 +30,19 @@ This starts:
 - a PBS-backed agent using `clients/<CLIENT>/pbs.template`
 - a login-node agent queue named `<QUEUE>-login`
 
+## Create and listen to a queue
+ClearML queues are created implicitly when an agent listens on a queue name. To create a new queue, simply start an agent on that name, then enqueue tasks to it.
+
+Start an agent listening to `my-queue`:
+```bash
+CLIENT=sirius QUEUE=my-queue bash clients/launch_clearml_agent.sh
+```
+
+Enqueue a task to `my-queue`:
+```python
+Task.enqueue(created_task, queue_name="my-queue")
+```
+
 ## Templates
 Queue templates are in:
 - `clients/crux/pbs.template`

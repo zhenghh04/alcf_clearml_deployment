@@ -52,8 +52,8 @@ def _read_test(path, chunk_bytes):
 def main():
     task = Task.init(project_name="AmSC", task_name="I/O bandwidth test")
 
-    test_dir = _env_str("IO_TEST_DIR", "/tmp")
-    total_mb = _env_int("IO_TEST_SIZE_MB", 1024)
+    test_dir = _env_str("IO_TEST_DIR", "/tmp/")
+    total_mb = _env_int("IO_TEST_SIZE_MB", 16384)
     chunk_mb = _env_int("IO_TEST_CHUNK_MB", 8)
 
     os.makedirs(test_dir, exist_ok=True)
