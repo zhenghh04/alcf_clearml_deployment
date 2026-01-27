@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-python train.py \
+python resnet50.py \
   --data-dir "${CIFAR10_DIR:-/tmp/cifar10}" \
   --epochs 1 \
   --batch-size 128 \
