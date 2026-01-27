@@ -1,9 +1,5 @@
 from clearml.automation.controller import PipelineDecorator
 from clearml import TaskTypes
-import os
-os.environ["CLEARML_AGENT_SKIP_PIP_VENV_INSTALL"] = "/home/hzheng/clearml/miniconda3/bin/python"
-os.environ['CLEARML_AGENT_SKIP_PYTHON_ENV_INSTALL']=str(1)
-os.environ["CLEARML_AGENT_PIP_INSTALL_ARGS"] = "--ignore-installed"
 
 # Make the following function an independent pipeline component step
 # notice all package imports inside the function will be automatically logged as
@@ -13,6 +9,9 @@ os.environ["CLEARML_AGENT_PIP_INSTALL_ARGS"] = "--ignore-installed"
     cache=True,
     task_type=TaskTypes.data_processing,
     execution_queue="sirius-login",
+    docker="python:3.12-slim",
+    packages=["clearml==2.1.2", "pandas==2.1.4", "scikit-learn==1.6.1"],
+    execution_queue="sirius-login"
 )
 def step_one(pickle_data_url: str, extra: int = 43):
     print("step_one")
@@ -41,6 +40,9 @@ def step_one(pickle_data_url: str, extra: int = 43):
     cache=True,
     task_type=TaskTypes.data_processing,
     execution_queue="crux",
+    docker="python:3.12-slim",
+    packages=["clearml==2.1.2", "pandas==2.1.4", "scikit-learn==1.6.1"],
+    execution_queue="sirius"
 )
 def step_two(data_frame, test_size=0.2, random_state=42):
     print("step_two")
@@ -65,6 +67,9 @@ def step_two(data_frame, test_size=0.2, random_state=42):
     cache=True,
     task_type=TaskTypes.training,
     execution_queue="crux",
+    docker="python:3.12-slim",
+    packages=["clearml==2.1.2", "pandas==2.1.4", "scikit-learn==1.6.1"],
+    execution_queue="sirius"
 )
 def step_three(X_train, y_train):
     print("step_three")
@@ -87,6 +92,9 @@ def step_three(X_train, y_train):
     cache=True,
     task_type=TaskTypes.qc,
     execution_queue="crux",
+    docker="python:3.12-slim",
+    packages=["clearml==2.1.2", "scikit-learn==1.6.1"],
+    execution_queue="sirius"
 )
 def step_four(model, X_data, Y_data):
     from sklearn.linear_model import LogisticRegression  # noqa
@@ -135,7 +143,7 @@ if __name__ == "__main__":
     # PipelineDecorator.set_default_execution_queue('default')
     # Run the pipeline steps as subprocesses on the current machine, great for local executions
     # (for easy development / debugging, use `PipelineDecorator.debug_pipeline()` to execute steps as regular functions)
-    PipelineDecorator.set_default_execution_queue("sirius-login")
+    #PipelineDecorator.set_default_execution_queue("sirius-login")
     #PipelineDecorator.run_locally()
     #PipelineDecorator.run()
 

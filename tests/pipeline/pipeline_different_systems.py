@@ -7,7 +7,11 @@ import os
 # ------------------------
 # Step 0: local
 # ------------------------
-@PipelineDecorator.component(execution_queue="sirius-login")
+@PipelineDecorator.component(
+    execution_queue="sirius-login",
+    docker="python:3.12-slim",
+    packages=["clearml==2.1.2"],
+)
 def generate_config() -> dict:
     
     print("LOCAL: generating config")
@@ -28,7 +32,9 @@ def generate_config() -> dict:
 # Step 1: login node
 # ------------------------
 @PipelineDecorator.component(
-    execution_queue="sirius-login"
+    execution_queue="sirius-login",
+    docker="python:3.12-slim",
+    packages=["clearml==2.1.2"],
 )
 def stage_metadata(cfg: dict) -> dict:
     print("LOGIN NODE: staging metadata")
@@ -39,7 +45,9 @@ def stage_metadata(cfg: dict) -> dict:
 # Step 2: compute nodes (MPI)
 # ------------------------
 @PipelineDecorator.component(
-    execution_queue="sirius"
+    execution_queue="sirius",
+    docker="python:3.12-slim",
+    packages=["clearml==2.1.2"],
 )
 def run_mpi(cfg: dict) -> dict:
     task = Task.current_task()
@@ -63,7 +71,9 @@ def run_mpi(cfg: dict) -> dict:
 # Step 3: login node
 # ------------------------
 @PipelineDecorator.component(
-    execution_queue="sirius-login"
+    execution_queue="sirius-login",
+    docker="python:3.12-slim",
+    packages=["clearml==2.1.2"],
 )
 def collect_results(cfg: dict):
     print("LOGIN NODE: collecting results")
@@ -74,7 +84,8 @@ def collect_results(cfg: dict):
 # ------------------------
 @PipelineDecorator.pipeline(
     name="pipeline_different_system",
-    project="AmSC"
+    project="AmSC",
+    docker="python:3.12-slim",
 )
 def pipeline():
     cfg = generate_config()
@@ -83,5 +94,5 @@ def pipeline():
     collect_results(cfg)
 
 if __name__ == "__main__":
-    PipelineDecorator.run_locally()
+    #PipelineDecorator.run_locally()
     pipeline()
