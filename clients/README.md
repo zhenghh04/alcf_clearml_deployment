@@ -31,7 +31,7 @@ This starts:
 - a login-node agent queue named `<QUEUE>-login`
 
 ## Create and listen to a queue
-ClearML queues are created implicitly when an agent listens on a queue name. To create a new queue, simply start an agent on that name, then enqueue tasks to it.
+ClearML queues are created implicitly when a task is enqueued to a new queue name. Agents can only attach to existing queues.
 
 Start an agent listening to `my-queue`:
 ```bash
