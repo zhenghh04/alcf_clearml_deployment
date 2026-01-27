@@ -8,6 +8,7 @@ python resnet50.py \
   --lr 0.01 \
   --num-workers 4 \
   --download \
+  --device cuda \
   --checkpoint "${RESNET50_CKPT:-/tmp/resnet50_cifar10.pt}"
 echo " `date` Done! Model saved to ${RESNET50_CKPT:-/tmp/resnet50_cifar10.pt}"
 #-- END OF FILE --
