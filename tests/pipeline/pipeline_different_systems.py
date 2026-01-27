@@ -13,8 +13,8 @@ import socket
 
 @PipelineDecorator.component(
     execution_queue=None,
-    docker="python:3.12-slim",
-    packages=["clearml==2.1.3"],
+    docker="python:3.13-slim",
+    packages=["clearml==2.1.3", "torchvision==0.15.2", "torch==2.10"],
 )
 def step_local() -> dict:
     print("Logging to system and writing hello_clearml.txt on home directory")
@@ -25,8 +25,8 @@ def step_local() -> dict:
 
 @PipelineDecorator.component(
     execution_queue="sirius-login",
-    docker="python:3.12-slim",
-    packages=["clearml==2.1.3"],
+    docker="python:3.13-slim",
+    packages=["clearml==2.1.3", "torchvision==0.15.2", "torch==2.10"],
 )
 def step_sirius() -> dict:
     print("Logging to system and writing hello_clearml.txt on home directory")
@@ -37,8 +37,8 @@ def step_sirius() -> dict:
 
 @PipelineDecorator.component(
     execution_queue="sophia-login",
-    docker="python:3.12-slim",
-    packages=["clearml==2.1.3"],
+    docker="python:3.13-slim",
+    packages=["clearml==2.1.3", "torchvision==0.15.2", "torch==2.10"],
 )
 def step_sophia() -> dict:
     print("Logging to system and writing hello_clearml.txt on home directory")
@@ -49,8 +49,8 @@ def step_sophia() -> dict:
 
 @PipelineDecorator.component(
     execution_queue="aurora-login",
-    docker="python:3.12-slim",
-    packages=["clearml==2.1.3"],
+    docker="python:3.13-slim",
+    packages=["clearml==2.1.3", "torchvision==0.15.2", "torch==2.10"],
 )
 def step_aurora() -> dict:
     print("Logging to system and writing hello_clearml.txt on home directory")
@@ -65,12 +65,12 @@ def step_aurora() -> dict:
 @PipelineDecorator.pipeline(
     name="pipeline_different_system",
     project="AmSC",
-    docker="python:3.12-slim",
+    docker="python:3.13-slim",
 )
 def pipeline():
     task = Task.current_task()
     if task:
-        task.set_packages(["clearml==2.1.3"])
+        task.set_packages(["clearml==2.1.3", "torchvision==0.15.2", "torch==2.10"])
     step_local()
     step_sirius()
     step_sophia()
