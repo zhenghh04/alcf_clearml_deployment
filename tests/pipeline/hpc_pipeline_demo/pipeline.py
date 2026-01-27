@@ -24,13 +24,13 @@ def main():
     )
 
     # ---- Step 1b: Move dataset ----
-    pipe.add_step(
-        name="move_dataset",
-        base_task_project="amsc/pipeline-demo",
-        base_task_name="move-dataset",
-        execution_queue="sophia-login",
-        parents=["prepare_data"],
-    )
+    #pipe.add_step(
+    #    name="move_dataset",
+    #    base_task_project="amsc/pipeline-demo",
+    #    base_task_name="move-dataset",
+    #    execution_queue="sophia-login",
+    #    parents=["prepare_data"],
+    #)
 
     # ---- Step 2: Train ----
     pipe.add_step(
@@ -38,7 +38,7 @@ def main():
         base_task_project="amsc/pipeline-demo",
         base_task_name="train-model",
         execution_queue="sophia-login",
-        parents=["move_dataset"],
+        parents=["prepare_data"],
     )
 
     # ---- Step 3: Evaluate ----

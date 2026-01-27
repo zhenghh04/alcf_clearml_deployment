@@ -52,7 +52,7 @@ def validate(model, loader, criterion, device):
 
 def main():
     parser = argparse.ArgumentParser(description="ResNet50 CIFAR-10 training")
-    parser.add_argument("--data-dir", default=os.environ.get("CIFAR10_DIR", "/tmp/cifar10"))
+    parser.add_argument("--data-dir", default=os.environ.get("CIFAR10_DIR", "./"))
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--epochs", type=int, default=1)
     parser.add_argument("--lr", type=float, default=0.01)
