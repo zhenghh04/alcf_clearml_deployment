@@ -11,5 +11,5 @@ export K8S_GLUE_POD_AGENT_INSTALL_ARGS="==2.0.7rc5"
 pkill clearml-agent-slurm
 pkill clearml-agent
 
-clearml-agent-slurm --template-files ${CLIENT}/pbs.template --queue ${QUEUE:-$CLIENT} --use-pbs & 
-clearml-agent daemon --detached --queue ${QUEUE:-$CLIENT}-login &
+nohup clearml-agent-slurm --template-files ${CLIENT}/pbs.template --queue ${QUEUE:-$CLIENT} --use-pbs & 
+nohup clearml-agent daemon --detached --queue ${QUEUE:-$CLIENT}-login &
