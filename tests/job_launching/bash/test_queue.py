@@ -15,7 +15,7 @@ args = parser.parse_args()
 created_task = Task.create(
     project_name = "AmSC",
     task_name = "PBS Demo bash",
-    script = "tests/jobs_launching/bash/run.sh",
+    script = "tests/job_launching/bash/run.sh",
     binary = "/bin/bash",
     repo = "https://github.com/zhenghh04/alcf_clearml_evaluation.git",
 )
