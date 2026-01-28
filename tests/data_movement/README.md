@@ -21,6 +21,13 @@ python tests/data_movement/transfer_globus.py \
   --poll-interval 10
 ```
 
+### Direct Globus CLI example
+```bash
+globus transfer --activate \
+  05d2c76a-e867-4f67-aa57-76edeb0beda0:/datasets/test.txt \
+  f39a7a0f-5bfc-46ce-9615-ba9f8592814f:/datascience/test.txt
+```
+
 Optional:
 - `GLOBUS_LABEL` custom transfer label
 - `GLOBUS_SYNC_LEVEL` (e.g., `mtime`, `checksum`, `exists`)
