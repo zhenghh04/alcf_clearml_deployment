@@ -1,4 +1,4 @@
 #!/bin/bash
 set -euo pipefail
 
-echo "  Evaluating model..."
+echo "`date`  Evaluating model..."
