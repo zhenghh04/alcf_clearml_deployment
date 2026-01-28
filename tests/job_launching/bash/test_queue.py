@@ -17,6 +17,7 @@ created_task = Task.create(
     task_name = "PBS Demo bash",
     script = "tests/jobs_launching/bash/run.sh",
     binary = "/bin/bash",
+    repo = "https://github.com/zhenghh04/alcf_clearml_evaluation.git",
 )
 created_task.set_user_properties(
     walltime=args.walltime,
