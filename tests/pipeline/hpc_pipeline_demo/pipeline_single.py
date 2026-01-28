@@ -5,24 +5,23 @@ prepare_task = Task.create(
     project_name="amsc/pipeline-demo",
     task_name="prepare-data",
     task_type=Task.TaskTypes.data_processing,
-    script="./tasks/prepare_data.py",
-    force_single_script_file = True
+    script="tests/pipeline/hpc_pipeline_demo/tasks/prepare_data.sh",
+    binary="/bin/bash",
 )
 train_task = Task.create(
     project_name="amsc/pipeline-demo",
     task_name="train-model",
     task_type=Task.TaskTypes.training,
-    script="./tasks/train.sh",
+    script="tests/pipeline/hpc_pipeline_demo/tasks/train.sh",
     binary="/bin/bash",
-    force_single_script_file = True
 )
+
 eval_task = Task.create(
     project_name="amsc/pipeline-demo",
     task_name="evaluate-model",
     task_type=Task.TaskTypes.testing,
-    script="./tasks/evaluate.sh",
+    script="tests/pipeline/hpc_pipeline_demo/tasks/evaluate.sh",
     binary="/bin/bash",
-    force_single_script_file = True
 )
 
 # 2) Build pipeline using task IDs
@@ -30,6 +29,9 @@ pipe = PipelineController(
     name="example-hpc-pipeline",
     project="amsc/pipeline-demo",
     version="1.1",
+    packages = ["clearml>=2.1.3"],
+    docker = "python:3.13-slim",
+
 )
 
 pipe.add_step(
