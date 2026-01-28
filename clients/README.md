@@ -30,6 +30,18 @@ This starts:
 - a PBS-backed agent using `clients/<CLIENT>/pbs.template`
 - a login-node agent queue named `<QUEUE>-login`
 
+## Repo checkout cache and filesystem issues
+If the agent fails to checkout the repo (e.g., `not a git repository` or missing files under `_execute_.../task_repository`), point the cache to a local writable filesystem and clear stale caches:
+
+```bash
+export CLEARML_CACHE_DIR=/tmp/clearml
+export CLEARML_AGENT_VCS_CACHE_DIR=/tmp/clearml/vcs-cache
+rm -rf /home/$USER/.clearml/vcs-cache/alcf_clearml_evaluation.git.*
+rm -rf /lus/eagle/projects/*/$USER/clearml/.clearml/_execute_*
+```
+
+Then restart the agent.
+
 ## Create and listen to a queue
 ClearML queues are created implicitly when a task is enqueued to a new queue name. Agents can only attach to existing queues.
 

@@ -1,60 +1,79 @@
-from clearml import PipelineController
-from clearml import Task
+from clearml import Task, PipelineController
 
+# 1) Create base tasks (only once)
+prepare_task = Task.create(
+    project_name="amsc/pipeline-demo",
+    task_name="prepare-data",
+    task_type=Task.TaskTypes.data_processing,
+    repo="https://github.com/zhenghh04/alcf_clearml_evaluation.git",
+    branch="main",
+    working_directory="./tests/pipeline/hpc_pipeline_demo",
+    script="./tasks/prepare_data.sh",
+    binary="/bin/bash",
+)
 
-def main():
-    pipe = PipelineController(
-        name="example-hpc-pipeline",
-        project="amsc/pipeline-demo",
-        version="1.0",
-        add_pipeline_tags=True,
-        docker=None,
-    )
+train_task = Task.create(
+    project_name="amsc/pipeline-demo",
+    task_name="train-model",
+    task_type=Task.TaskTypes.training,
+    repo="https://github.com/zhenghh04/alcf_clearml_evaluation.git",
+    branch="main",
+    working_directory="./tests/pipeline/hpc_pipeline_demo",
+    script="./tasks/train.sh",
+    binary="/bin/bash",
+)
+train_task.set_user_properties(
+    walltime="0:10:00",
+    num_nodes=1,
+    account="datascience",
+    queue="by-gpu",
+)
 
-    # Optional: default queue (fallback)
-    pipe.set_default_execution_queue("sirius-login")
-    
+eval_task = Task.create(
+    project_name="amsc/pipeline-demo",
+    task_name="evaluate-model",
+    task_type=Task.TaskTypes.testing,
+    repo="https://github.com/zhenghh04/alcf_clearml_evaluation.git",
+    branch="main",
+    working_directory="./tests/pipeline/hpc_pipeline_demo",
+    script="./tasks/evaluate.sh",
+    binary="/bin/bash",
+)
 
-    # ---- Step 1: Prepare data ----
-    pipe.add_step(
-        name="prepare_data",
-        base_task_project="amsc/pipeline-demo",
-        base_task_name="prepare-data",
-        execution_queue="sophia-login",
-    )
+eval_task.set_user_properties(
+    walltime="0:10:00",
+    num_nodes=1,
+    account="datascience",
+    queue = "by-gpu",
+)
 
-    # ---- Step 1b: Move dataset ----
-    #pipe.add_step(
-    #    name="move_dataset",
-    #    base_task_project="amsc/pipeline-demo",
-    #    base_task_name="move-dataset",
-    #    execution_queue="sophia-login",
-    #    parents=["prepare_data"],
-    #)
+# 2) Build pipeline using task IDs
+pipe = PipelineController(
+    name="example-hpc-pipeline",
+    project="amsc/pipeline-demo",
+    version="1.1",
+    packages = ["clearml>=2.1.3"],
+    docker = "python:3.13-slim",
 
-    # ---- Step 2: Train ----
-    pipe.add_step(
-        name="train",
-        base_task_project="amsc/pipeline-demo",
-        base_task_name="train-model",
-        execution_queue="sophia-login",
-        parents=["prepare_data"],
-    )
+)
 
-    # ---- Step 3: Evaluate ----
-    pipe.add_step(
-        name="evaluate",
-        base_task_project="amsc/pipeline-demo",
-        base_task_name="evaluate-model",
-        execution_queue="sophia-login",
-        parents=["train"],
-    )
+pipe.add_step(
+    name="prepare_data",
+    base_task_id=prepare_task.id,
+    execution_queue="sophia-login",
+)
+pipe.add_step(
+    name="train",
+    base_task_id=train_task.id,
+    execution_queue="sophia-login",
+    parents=["prepare_data"],
+)
+pipe.add_step(
+    name="evaluate",
+    base_task_id=eval_task.id,
+    execution_queue="sophia-login",
+    parents=["train"],
+)
 
-    # Start execution
-    pipe.start()
-
-    print(f"Pipeline started: {pipe.id}")
-
-
-if __name__ == "__main__":
-    main()
+pipe.start()
+print("Pipeline started:", pipe.id)
