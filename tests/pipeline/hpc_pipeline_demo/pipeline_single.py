@@ -7,8 +7,8 @@ prepare_task = Task.create(
     task_type=Task.TaskTypes.data_processing,
     repo="https://github.com/zhenghh04/alcf_clearml_evaluation.git",
     branch="main",
-    working_directory="./",
-    script="tests/pipeline/hpc_pipeline_demo/tasks/prepare_data.sh",
+    working_directory="./tests/pipeline/hpc_pipeline_demo",
+    script="./tasks/prepare_data.sh",
     binary="/bin/bash",
 )
 train_task = Task.create(
@@ -17,8 +17,8 @@ train_task = Task.create(
     task_type=Task.TaskTypes.training,
     repo="https://github.com/zhenghh04/alcf_clearml_evaluation.git",
     branch="main",
-    working_directory="./",
-    script="tests/pipeline/hpc_pipeline_demo/tasks/train.sh",
+    working_directory="./tests/pipeline/hpc_pipeline_demo",
+    script="./tasks/train.sh",
     binary="/bin/bash",
 )
 
@@ -28,8 +28,8 @@ eval_task = Task.create(
     task_type=Task.TaskTypes.testing,
     repo="https://github.com/zhenghh04/alcf_clearml_evaluation.git",
     branch="main",
-    working_directory="./",
-    script="tests/pipeline/hpc_pipeline_demo/tasks/evaluate.sh",
+    working_directory="./tests/pipeline/hpc_pipeline_demo",
+    script="./tasks/evaluate.sh",
     binary="/bin/bash",
 )
 
