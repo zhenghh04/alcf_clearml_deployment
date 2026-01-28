@@ -15,9 +15,11 @@ args = parser.parse_args()
 created_task = Task.create(
     project_name = "AmSC",
     task_name = "PBS Demo bash",
-    script = "tests/job_launching/bash/run.sh",
+    script = "run.sh",
+    working_directory = "tests/job_launching/bash",
     binary = "/bin/bash",
     repo = "https://github.com/zhenghh04/alcf_clearml_evaluation.git",
+    branch="main"
 )
 created_task.set_user_properties(
     walltime=args.walltime,
