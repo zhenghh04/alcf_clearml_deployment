@@ -18,8 +18,6 @@ created_task = Task.create(
     script = "tests/job_launching/bash/run.sh",
     working_directory = "./",
     binary = "/bin/bash",
-    repo = "https://github.com/zhenghh04/alcf_clearml_evaluation.git",
-    branch="main"
 )
 created_task.set_user_properties(
     walltime=args.walltime,
