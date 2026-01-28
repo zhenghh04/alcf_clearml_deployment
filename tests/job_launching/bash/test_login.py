@@ -1,4 +1,9 @@
 from clearml import Task
+import argparse
+parser = argparse.ArgumentParser()
+
+parser.add_argument("--queue", default="crux")
+args = parser.parse_args()
 
 created_task = Task.create(
     project_name = "AmSC",
@@ -10,4 +15,4 @@ created_task = Task.create(
     binary = "/bin/bash",
 )
 
-Task.enqueue(created_task, queue_name="sirius-login")
+Task.enqueue(created_task, queue_name=args.queue)
