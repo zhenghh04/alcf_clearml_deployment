@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import argparse
 import json
+import logging
 import os
 import re
 import shlex
@@ -78,19 +79,8 @@ def _build_command(args):
     return cmd
 
 
-def _maybe_log(message):
-    try:
-        from clearml import Logger
-    except Exception:
-        return
-    Logger.current_logger().report_text(message)
-
-def _maybe_report_scalar(title, series, value, iteration):
-    try:
-        from clearml import Logger
-    except Exception:
-        return
-    Logger.current_logger().report_scalar(title, series, iteration=iteration, value=value)
+def _log(message):
+    logging.info(message)
 
 
 def _poll_progress(task_id, interval_s):
@@ -104,12 +94,12 @@ def _poll_progress(task_id, interval_s):
             text=True,
         )
         if result.returncode != 0:
-            _maybe_log("Failed to query Globus task status; stopping progress polling.")
+            _log("Failed to query Globus task status; stopping progress polling.")
             return
         try:
             data = json.loads(result.stdout)
         except json.JSONDecodeError:
-            _maybe_log("Failed to parse Globus task status; stopping progress polling.")
+            _log("Failed to parse Globus task status; stopping progress polling.")
             return
 
         status = data.get("status")
@@ -120,14 +110,13 @@ def _poll_progress(task_id, interval_s):
         elapsed = max(time.time() - start, 1e-9)
 
         mb_s = (bytes_transferred / (1024 * 1024)) / elapsed
-        _maybe_report_scalar("globus_transfer", "bytes_transferred", bytes_transferred, int(elapsed))
-        _maybe_report_scalar("globus_transfer", "bytes_total", bytes_total, int(elapsed))
-        _maybe_report_scalar("globus_transfer", "files_transferred", files_transferred, int(elapsed))
-        _maybe_report_scalar("globus_transfer", "files_total", files_total, int(elapsed))
-        _maybe_report_scalar("globus_transfer", "mb_s", mb_s, int(elapsed))
+        _log(
+            "Progress: status=%s bytes=%s/%s files=%s/%s mb_s=%.2f"
+            % (status, bytes_transferred, bytes_total, files_transferred, files_total, mb_s)
+        )
 
         if status != last_state:
-            _maybe_log("Globus task status: {}".format(status))
+            _log("Globus task status: {}".format(status))
             last_state = status
 
         if status in ("SUCCEEDED", "FAILED", "CANCELED"):
@@ -153,16 +142,10 @@ def main():
             "Missing required args: --src-endpoint, --dst-endpoint, --src-path, --dst-path"
         )
 
-    try:
-        from clearml import Task
-        Task.init(project_name="AmSC", task_name="Globus data movement")
-    except Exception:
-        pass
-
     cmd = _build_command(args)
     dry_run = args.dry_run
 
-    _maybe_log("Running Globus transfer command: {}".format(" ".join(map(shlex.quote, cmd))))
+    _log("Running Globus transfer command: {}".format(" ".join(map(shlex.quote, cmd))))
     if dry_run:
         print("Dry run:", " ".join(map(shlex.quote, cmd)))
         return
@@ -173,8 +156,8 @@ def main():
 
     if result.returncode != 0:
         if result.stderr:
-            _maybe_log("Globus transfer stderr: {}".format(result.stderr.strip()))
-        _maybe_log("Globus transfer failed with return code {}".format(result.returncode))
+            _log("Globus transfer stderr: {}".format(result.stderr.strip()))
+        _log("Globus transfer failed with return code {}".format(result.returncode))
         raise SystemExit(result.returncode)
 
     task_id = None
@@ -185,12 +168,13 @@ def main():
                 break
     if task_id:
         if args.no_wait:
-            _maybe_log("Globus task submitted; not waiting for completion.")
+            _log("Globus task submitted; not waiting for completion.")
         else:
             _poll_progress(task_id, args.poll_interval)
 
-    _maybe_log("Globus transfer completed in {:.2f}s".format(elapsed))
+    _log("Globus transfer completed in {:.2f}s".format(elapsed))
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     main()
