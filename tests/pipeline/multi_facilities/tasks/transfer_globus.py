@@ -45,7 +45,27 @@ def _resolve_collection_id(name_or_id):
             text=True,
         )
     if result.returncode != 0:
-        raise RuntimeError("Failed to resolve collection name: {}".format(name_or_id))
+        # Fallback: try endpoint search without json formatting and parse UUID
+        fallback = subprocess.run(
+            ["globus", "endpoint", "search", name_or_id],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if fallback.returncode == 0 and fallback.stdout:
+            for line in fallback.stdout.splitlines():
+                parts = line.split("|")
+                if parts and _is_uuid(parts[0].strip()):
+                    return parts[0].strip()
+            for line in fallback.stdout.splitlines():
+                token = line.strip().split()[0] if line.strip() else ""
+                if _is_uuid(token):
+                    return token
+        raise RuntimeError(
+            "Failed to resolve collection name: {} (stderr: {})".format(
+                name_or_id, (result.stderr or "").strip()
+            )
+        )
     try:
         data = json.loads(result.stdout)
     except json.JSONDecodeError:
