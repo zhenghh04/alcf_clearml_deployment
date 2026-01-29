@@ -35,14 +35,6 @@ def main():
     if user_props:
         created_task.set_user_properties(**user_props)
 
-    if not args.no_skip_install:
-        created_task.set_environment(
-            {
-                "CLEARML_AGENT_SKIP_PYTHON_ENV_INSTALL": "1",
-                "CLEARML_AGENT_SKIP_PIP_VENV_INSTALL": sys.executable,
-            }
-        )
-
     print("Enqueuing task id={} to clearml_queue='{}'".format(created_task.id, args.clearml_queue))
     Task.enqueue(created_task, queue_name=args.clearml_queue)
 
