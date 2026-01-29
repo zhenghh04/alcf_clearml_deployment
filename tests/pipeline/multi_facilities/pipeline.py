@@ -73,13 +73,13 @@ pipe = PipelineController(
 pipe.add_step(
     name="prepare_data",
     base_task_id=prepare_task.id,
-    execution_queue="crux-login",
+    execution_queue="crux-services",
 )
 
 pipe.add_step(
     name="transfer_data",
     base_task_id=transfer_task.id,
-    execution_queue="crux-login",
+    execution_queue="crux-services",
     parents=["prepare_data"],
 )
 
