@@ -65,3 +65,8 @@ python tests/data_movement/launch_transfer.py \
   --dst-path /datascience/test.txt \
   --queue sirius-login
 ```
+
+
+![alt text](../../.docs/figures/globus_data_transfer.png)
+
+The diagram shows a typical Globus transfer flow between two ALCF endpoints. Use this test to validate credentials, endpoint access, and transfer performance before integrating data movement into larger workflows.

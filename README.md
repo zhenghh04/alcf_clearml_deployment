@@ -26,22 +26,31 @@ File: `tests/setup.sh`. This exports environment variables commonly used on ALCF
 There is no single test runner; run the individual scripts in `tests/` as needed.
 
 ### Job launching
-Python enqueue examples: `tests/job_launching/python/test_login.py`, `tests/job_launching/python/test_queue.py`, `tests/job_launching/python/test.py`.
-Bash/PBS examples: `tests/job_launching/bash/test_login.py`, `tests/job_launching/bash/test_queue.py`, `tests/job_launching/bash/run.sh`, `tests/job_launching/bash/run_login.sh`.
+* Python enqueue examples: 
+    - `tests/job_launching/python/test_login.py`: run tasks on login node through clearml-agent queue
+    - `tests/job_launching/python/test_queue.py`: run tasks on compute node(s) through clearml-slurm-agent queue
+* Bash/PBS examples: 
+    - `tests/job_launching/bash/test_login.py` & `tests/job_launching/bash/run_login.sh`: run tasks on login node with the steps defined in run_login.sh
+    - `tests/job_launching/bash/test_queue.py` & `tests/job_launching/bash/run.sh`, run tasks on compute node(s) with the steps defined in run.sh
 
-Example:
+Example submission: 
 ```bash
 python tests/job_launching/python/test_login.py
 ```
 
 ### Pipelines
-Files: `tests/pipeline/pipeline_from_decorator.py`, `tests/pipeline/pipeline_from_functions.py`, `tests/pipeline/pipeline_different_systems.py`, `tests/pipeline/hpc_pipeline_demo/`.
+- `tests/pipeline/pipeline_from_decorator.py` Pipeline built with `PipelineDecorator` components.
+- `tests/pipeline/pipeline_from_functions.py` Pipeline built with `PipelineController` function steps.
+- `tests/pipeline/pipeline_different_systems.py` Multi-queue pipeline example for different systems.
+- `tests/pipeline/hpc_pipeline_demo/` End-to-end HPC pipeline demo with data prep, train, and eval.
 
 ### Experiment tracking
-File: `tests/experiment_tracking/pytorch_mnist.py`.
+- `tests/experiment_tracking/pytorch_mnist.py` ClearML experiment tracking example (MNIST).
 
 ### Datasets
-Files: `tests/data/test_creation.py`, `tests/data/test_upload_link.py`, `tests/data/dolma.py`.
+- `tests/data/test_creation.py` Create and upload a dataset to ClearML.
+- `tests/data/test_upload_link.py` Add external files to a dataset via file links.
+- `tests/data/dolma.py` Register Dolma dataset files as external links.
 
 ## Notes
 - Many scripts assume ClearML server URLs, queues, and filesystem paths that are specific to ALCF environments. Adjust as needed for your site.
