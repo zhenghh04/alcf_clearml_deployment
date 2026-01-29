@@ -9,7 +9,7 @@ from clearml import Task
 def main():
     parser = argparse.ArgumentParser(description="Enqueue MNIST training task")
     parser.add_argument("--clearml-queue", default="sophia")
-    parser.add_argument("--pbs-queue", default="by-gpu")
+    parser.add_argument("--pbs-queue", default="workq")
     parser.add_argument("--walltime", default=os.environ.get("WALLTIME"))
     parser.add_argument("--num-nodes", type=int, default=os.environ.get("NUM_NODES"))
     parser.add_argument("--account", default=os.environ.get("ACCOUNT"))
