@@ -9,6 +9,8 @@ To run pipeline steps on multiple queues:
 2) Start agents on each system, each listening to its own queue associated to the system
 3) Assign `execution_queue` per step.
 
+![alt text](../../.docs/figures/creating_queue.png)
+
 ### Example (PipelineDecorator)
 ```python
 @PipelineDecorator.component(execution_queue="sirius-login")
