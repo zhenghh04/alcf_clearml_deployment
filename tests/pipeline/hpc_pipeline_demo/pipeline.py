@@ -1,3 +1,6 @@
+import os
+os.environ["CLEARML_FORCE_NO_REMOTE"] = "1"
+os.environ.pop("CLEARML_DEFAULT_QUEUE", None)
 from clearml import Task, PipelineController
 
 # 1) Create base tasks (only once)
@@ -52,7 +55,7 @@ pipe = PipelineController(
     name="example-hpc-pipeline",
     project="amsc/pipeline-demo",
     version="1.1",
-    packages = ["clearml>=2.1.3"],
+    packages = False,
     docker = "python:3.13-slim",
 
 )
@@ -74,6 +77,7 @@ pipe.add_step(
     execution_queue="sophia-login",
     parents=["train"],
 )
-
-pipe.start()
+# this is important to avoid running the pipeline controller inside the container
+pipe.start_locally(run_pipeline_steps_locally=False)
+#pipe.start()
 print("Pipeline started:", pipe.id)
