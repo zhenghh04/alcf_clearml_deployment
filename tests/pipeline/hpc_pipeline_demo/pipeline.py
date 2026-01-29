@@ -78,6 +78,6 @@ pipe.add_step(
     parents=["train"],
 )
 # this is important to avoid running the pipeline controller inside the container
-pipe.start_locally(run_pipeline_steps_locally=False)
-#pipe.start()
+#pipe.start_locally(run_pipeline_steps_locally=False)
+pipe.start(queue="venv-services-queue")
 print("Pipeline started:", pipe.id)
