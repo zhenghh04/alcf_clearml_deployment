@@ -96,5 +96,5 @@ pipe.add_step(
     parents=["train"],
 )
 
-pipe.start()
+pipe.start(queue="crux-login")
 print("Pipeline started:", pipe.id)
