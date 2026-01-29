@@ -36,7 +36,7 @@ train_task = Task.create(
 )
 
 train_task.set_user_properties(
-    walltime="0:10:00",
+    walltime="0:20:00",
     num_nodes=1,
     account="datascience",
     queue="debug",

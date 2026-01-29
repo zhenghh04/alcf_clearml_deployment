@@ -8,6 +8,6 @@ python tasks/resnet50.py \
   --lr 0.01 \
   --num-workers 4 \
   --download \
-  --checkpoint "${RESNET50_CKPT:-$HOME/clearml/alcf_clearml_evaluation/tests/hpc_pipeline_demo/resnet50_cifar10.pt}"
+  --checkpoint "${RESNET50_CKPT:-/tmp/resnet50_cifar10.pt}"
 echo " `date` Done! Model saved to ${RESNET50_CKPT:-/tmp/resnet50_cifar10.pt}"
 #-- END OF FILE --
