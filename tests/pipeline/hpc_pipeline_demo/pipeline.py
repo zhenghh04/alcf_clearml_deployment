@@ -79,5 +79,5 @@ pipe.add_step(
 )
 # this is important to avoid running the pipeline controller inside the container
 #pipe.start_locally(run_pipeline_steps_locally=False)
-pipe.start(queue="venv-services-queue")
+pipe.start(queue="crux-login")
 print("Pipeline started:", pipe.id)
