@@ -8,21 +8,20 @@ from clearml import Task
 
 def main():
     parser = argparse.ArgumentParser(description="Enqueue MNIST training task")
-    parser.add_argument("--clearml-queue", default=os.environ.get("CLEARML_QUEUE"))
-    parser.add_argument("--queue", default=os.environ.get("QUEUE", "default"))
-    parser.add_argument("--pbs-queue", default=os.environ.get("PBS_QUEUE"))
+    parser.add_argument("--clearml-queue", default="sophia")
+    parser.add_argument("--pbs-queue", default="by-gpu")
     parser.add_argument("--walltime", default=os.environ.get("WALLTIME"))
     parser.add_argument("--num-nodes", type=int, default=os.environ.get("NUM_NODES"))
     parser.add_argument("--account", default=os.environ.get("ACCOUNT"))
     parser.add_argument("--no-skip-install", action="store_true", default=False)
     args = parser.parse_args()
 
-    script_path = os.path.join(os.path.dirname(__file__), "pytorch_mnist.py")
     created_task = Task.create(
         project_name="AmSC",
         task_name="PyTorch MNIST train (enqueued)",
-        script=script_path,
-        force_single_script_file=True,
+        repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
+        branch="main",        
+        script="tests/experiment_tracking/pytorch_mnist.py",
     )
     user_props = {}
     if args.pbs_queue:
@@ -44,9 +43,8 @@ def main():
             }
         )
 
-    clearml_queue = args.clearml_queue or args.queue
-    print("Enqueuing task id={} to clearml_queue='{}'".format(created_task.id, clearml_queue))
-    Task.enqueue(created_task, queue_name=clearml_queue)
+    print("Enqueuing task id={} to clearml_queue='{}'".format(created_task.id, args.clearml_queue))
+    Task.enqueue(created_task, queue_name=args.clearml_queue)
 
 
 if __name__ == "__main__":
