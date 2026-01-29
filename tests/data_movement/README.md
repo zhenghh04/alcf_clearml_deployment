@@ -9,6 +9,26 @@ This folder contains a local task to move data between ALCF Globus endpoints. Th
     ```
 - ClearML configured (optional)
 
+## Globus CLI setup (one-time)
+1) Log in and store tokens:
+```bash
+globus login --consent
+```
+If you are on a remote node without a browser:
+```bash
+globus login --no-local-server --consent
+```
+
+2) Verify your identity:
+```bash
+globus whoami
+```
+
+3) If a collection requires consent, grant it:
+```bash
+globus session consent 'urn:globus:auth:scope:transfer.api.globus.org:all[*https://auth.globus.org/scopes/<COLLECTION_ID>/data_access]'
+```
+
 ## Run
 Set source/destination endpoints and paths via arguments (env vars are accepted as defaults). Endpoint names like `alcf#dtn_eagle` will be resolved automatically using `globus endpoint search` on this CLI version:
 ```bash
