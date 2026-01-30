@@ -65,13 +65,13 @@ pipe.add_step(
 pipe.add_step(
     name="train_model_a",
     base_task_id=train_a_task.id,
-    execution_queue="aurora",
+    execution_queue="crux",
     parents=["prepare_data"],
 )
 pipe.add_step(
     name="train_model_b",
     base_task_id=train_b_task.id,
-    execution_queue="aurora",
+    execution_queue="crux",
     parents=["prepare_data"],
 )
 
@@ -79,7 +79,7 @@ pipe.add_step(
 pipe.add_step(
     name="ensemble_evaluate",
     base_task_id=ensemble_eval_task.id,
-    execution_queue="aurora",
+    execution_queue="crux",
     parents=["train_model_a", "train_model_b"],
 )
 
