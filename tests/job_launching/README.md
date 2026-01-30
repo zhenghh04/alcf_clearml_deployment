@@ -20,6 +20,24 @@ Files under `tests/job_launching/bash/` mirror the Python flow but reference bas
 - `run.sh` Example PBS/MPI payload.
 - `run_login.sh` Example login-node payload.
 
+## Pattern B: single allocation with local ClearML subtasks
+This pattern submits **one** ClearML task to the queue (one PBS allocation), then launches multiple
+local ClearML subtasks inside that same job. Each subtask is a separate process, but **no additional
+queue submissions** are made.
+
+**Files:**
+- `tests/job_launching/pattern_b/submit_pattern_b.py` (enqueue the single allocation)
+- `tests/job_launching/pattern_b/run_local_tasks.py` (runs inside the allocation)
+- `tests/job_launching/pattern_b/subtask_worker.py` (example subtask)
+
+**Run:**
+```bash
+python tests/job_launching/pattern_b/submit_pattern_b.py --queue crux --num-nodes 6
+```
+
+Inside the job, `run_local_tasks.py` reads `PBS_NODEFILE` (or `COBALT_NODEFILE`), splits
+the nodes into groups (default 2 nodes per subtask), and launches the subtasks locally.
+
 ## Notes
 - Queue names and resource properties are site-specific; adjust for your ALCF system.
 - These scripts assume your ClearML server/agent configuration is already in place.
