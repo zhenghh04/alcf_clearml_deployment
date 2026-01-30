@@ -12,6 +12,14 @@ parser.add_argument("--pbs-queue", default=None)
 
 args = parser.parse_args()
 
+print("[test_queue] Starting job launch with arguments:")
+print(f"  queue={args.queue}")
+print(f"  num_nodes={args.num_nodes}")
+print(f"  walltime={args.walltime}")
+print(f"  account={args.account}")
+print(f"  script={args.script}")
+print(f"  pbs_queue={args.pbs_queue}")
+
 created_task = Task.create(
     project_name = "AmSC",
     task_name = "PBS Demo bash",
@@ -28,4 +36,9 @@ created_task.set_user_properties(
 )
 #created_task.set_user_properties(num_nodes={'type':int, "value":2}, walltime={"type":str, "value":"0:10:00"}, account="datascience")
 
+print(f"[test_queue] Created ClearML task id={created_task.id}")
+print(f"[test_queue] Enqueuing task to queue '{args.queue}'...")
+
 Task.enqueue(created_task, queue_name=args.queue)
+
+print("[test_queue] Task enqueued successfully.")
