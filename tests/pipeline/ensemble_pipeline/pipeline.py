@@ -93,7 +93,7 @@ for idx, params in enumerate(train_a_variants, start=1):
         base_task_id=train_a_task.id,
         execution_queue="crux",
         parents=["prepare_data"],
-        parameters=params,
+        parameter_override=params,
     )
     train_a_steps.append(step_name)
 
@@ -104,7 +104,7 @@ for idx, params in enumerate(train_b_variants, start=1):
         base_task_id=train_b_task.id,
         execution_queue="crux",
         parents=["prepare_data"],
-        parameters=params,
+        parameter_override=params,
     )
     train_b_steps.append(step_name)
 
