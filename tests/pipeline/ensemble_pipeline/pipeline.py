@@ -20,8 +20,8 @@ train_a_task = Task.create(
     repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
     branch="main",
     working_directory="./tests/pipeline/ensemble_pipeline",
-    script="./tasks/train_a.sh",
-    binary="/bin/bash",
+    script="./tasks/train_a.py",
+    binary="python",
 )
 
 train_b_task = Task.create(
@@ -31,8 +31,8 @@ train_b_task = Task.create(
     repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
     branch="main",
     working_directory="./tests/pipeline/ensemble_pipeline",
-    script="./tasks/train_b.sh",
-    binary="/bin/bash",
+    script="./tasks/train_b.py",
+    binary="python",
 )
 
 ensemble_eval_task = Task.create(
@@ -62,25 +62,58 @@ pipe.add_step(
 )
 
 # Parallel training steps (same parent, no dependency between them)
-pipe.add_step(
-    name="train_model_a",
-    base_task_id=train_a_task.id,
-    execution_queue="crux",
-    parents=["prepare_data"],
-)
-pipe.add_step(
-    name="train_model_b",
-    base_task_id=train_b_task.id,
-    execution_queue="crux",
-    parents=["prepare_data"],
-)
+train_a_variants = [
+    {"Args/learning_rate": 0.001, "Args/epochs": 10},
+    {"Args/learning_rate": 0.001, "Args/epochs": 20},
+    {"Args/learning_rate": 0.002, "Args/epochs": 10},
+    {"Args/learning_rate": 0.002, "Args/epochs": 20},
+    {"Args/learning_rate": 0.005, "Args/epochs": 10},
+    {"Args/learning_rate": 0.005, "Args/epochs": 20},
+    {"Args/learning_rate": 0.01, "Args/epochs": 10},
+    {"Args/learning_rate": 0.01, "Args/epochs": 20},
+]
+
+train_b_variants = [
+    {"Args/learning_rate": 0.001, "Args/epochs": 10},
+    {"Args/learning_rate": 0.001, "Args/epochs": 20},
+    {"Args/learning_rate": 0.002, "Args/epochs": 10},
+    {"Args/learning_rate": 0.002, "Args/epochs": 20},
+    {"Args/learning_rate": 0.005, "Args/epochs": 10},
+    {"Args/learning_rate": 0.005, "Args/epochs": 20},
+    {"Args/learning_rate": 0.01, "Args/epochs": 10},
+    {"Args/learning_rate": 0.01, "Args/epochs": 20},
+]
+
+train_a_steps = []
+train_b_steps = []
+for idx, params in enumerate(train_a_variants, start=1):
+    step_name = f"train_model_a_{idx}"
+    pipe.add_step(
+        name=step_name,
+        base_task_id=train_a_task.id,
+        execution_queue="crux",
+        parents=["prepare_data"],
+        parameters=params,
+    )
+    train_a_steps.append(step_name)
+
+for idx, params in enumerate(train_b_variants, start=1):
+    step_name = f"train_model_b_{idx}"
+    pipe.add_step(
+        name=step_name,
+        base_task_id=train_b_task.id,
+        execution_queue="crux",
+        parents=["prepare_data"],
+        parameters=params,
+    )
+    train_b_steps.append(step_name)
 
 # Ensemble evaluation depends on both training steps
 pipe.add_step(
     name="ensemble_evaluate",
     base_task_id=ensemble_eval_task.id,
     execution_queue="crux",
-    parents=["train_model_a", "train_model_b"],
+    parents=train_a_steps + train_b_steps,
 )
 
 pipe.start(queue="crux-services")
