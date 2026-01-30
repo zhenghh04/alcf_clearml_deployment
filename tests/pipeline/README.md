@@ -148,3 +148,36 @@ pipe.start(queue="crux-login")
 ## Notes
 - Queues must exist before agents attach. Create a queue by enqueueing a task to it.
 - If a step hangs after “Launching step …”, it usually means no agent is listening on that queue.
+
+## Ensemble pipeline with parallel steps (PipelineController)
+This example runs two training steps concurrently, then aggregates them in an ensemble evaluation step.
+
+**Files:**
+- `tests/pipeline/ensemble_pipeline/pipeline.py`
+- `tests/pipeline/ensemble_pipeline/tasks/prepare.sh`
+- `tests/pipeline/ensemble_pipeline/tasks/train_a.sh`
+- `tests/pipeline/ensemble_pipeline/tasks/train_b.sh`
+- `tests/pipeline/ensemble_pipeline/tasks/ensemble_eval.sh`
+
+**Run:**
+```bash
+python tests/pipeline/ensemble_pipeline/pipeline.py
+```
+
+**Key idea (parallel steps):**
+```python
+pipe.add_step(
+    name="train_model_a",
+    base_task_id=train_a_task.id,
+    execution_queue="aurora",
+    parents=["prepare_data"],
+)
+pipe.add_step(
+    name="train_model_b",
+    base_task_id=train_b_task.id,
+    execution_queue="aurora",
+    parents=["prepare_data"],
+)
+```
+
+Both training steps share the same parent and therefore run concurrently once `prepare_data` finishes. The `ensemble_evaluate` step lists both training steps as parents, so it waits until both are complete.
