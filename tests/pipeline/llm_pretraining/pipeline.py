@@ -1,11 +1,11 @@
 from clearml import PipelineController, Task
 
-MATH_DATASET_DIR = "/eagle/AuroraGPT/hzheng/NVIDIA/Nemotron-Math-v2"
-CODE_DATASET_DIR = "/eagle/AuroraGPT/hzheng/NVIDIA/Nemotron-Pretraining-Code-v2"
-MATH_FUSED_DIR = "/eagle/AuroraGPT/hzheng/NVIDIA/Nemotron-Math-v2-fused"
-CODE_FUSED_DIR = "/eagle/AuroraGPT/hzheng/NVIDIA/Nemotron-Pretraining-Code-v2-fused"
-MATH_TOKENIZED_DIR = "/eagle/AuroraGPT/hzheng//NVIDIA/Nemotron-Math-v2-fused-tok"
-CODE_TOKENIZED_DIR = "/eagle/AuroraGPT/hzheng/NVIDIA/Nemotron-Pretraining-Code-v2-fused-tok"
+MATH_DATASET_DIR = "/eagle/AuroraGPT/hzheng/nvidia/Nemotron-Math-v2"
+CODE_DATASET_DIR = "/eagle/AuroraGPT/hzheng/nvidia/Nemotron-Pretraining-Code-v2"
+MATH_FUSED_DIR = "/eagle/AuroraGPT/hzheng/nvidia/Nemotron-Math-v2-fused"
+CODE_FUSED_DIR = "/eagle/AuroraGPT/hzheng/nvidia/Nemotron-Pretraining-Code-v2-fused"
+MATH_TOKENIZED_DIR = "/eagle/AuroraGPT/hzheng/nvidia/Nemotron-Math-v2-fused-tok"
+CODE_TOKENIZED_DIR = "/eagle/AuroraGPT/hzheng/nvidia/Nemotron-Pretraining-Code-v2-fused-tok"
 TOKENIZER_MODEL = "/eagle/AuroraGPT/hzheng/gemma-7b"
 
 
@@ -54,6 +54,22 @@ check_code_access_task = Task.create(
 check_code_access_task.set_environment(
     {
         "HF_DATASET": "nvidia/Nemotron-Pretraining-Code-v2",
+    }
+)
+
+check_math_access_task = Task.create(
+    project_name="amsc/llm-pretraining",
+    task_name="check-math-access",
+    task_type=Task.TaskTypes.data_processing,
+    repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
+    branch="main",
+    working_directory="./tests/pipeline/llm_pretraining",
+    script="./tasks/check_hf_access.py",
+    binary="python",
+)
+check_math_access_task.set_environment(
+    {
+        "HF_DATASET": "nvidia/Nemotron-Math-v2",
     }
 )
 
@@ -150,6 +166,7 @@ pipe.add_step(
     name="download_math",
     base_task_id=download_math_task.id,
     execution_queue="crux-services",
+    parents=["check_math_access"],
 )
 
 pipe.add_step(
@@ -162,6 +179,12 @@ pipe.add_step(
 pipe.add_step(
     name="check_code_access",
     base_task_id=check_code_access_task.id,
+    execution_queue="crux-services",
+)
+
+pipe.add_step(
+    name="check_math_access",
+    base_task_id=check_math_access_task.id,
     execution_queue="crux-services",
 )
 
