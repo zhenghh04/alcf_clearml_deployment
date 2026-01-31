@@ -1,0 +1,5 @@
+clearml>=2.1.3
+huggingface-hub>=0.20.0
+datasets>=2.14.0
+tokenizers>=0.14.0
+globus-cli>=3.0.0

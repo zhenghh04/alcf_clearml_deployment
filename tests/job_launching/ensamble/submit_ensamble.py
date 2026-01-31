@@ -26,4 +26,4 @@ created_task.set_user_properties(
 )
 
 Task.enqueue(created_task, queue_name=args.queue)
-print(f"Enqueued pattern B runner to queue '{args.queue}' as task {created_task.id}")
+print(f"Enqueued Ensamble runner to queue '{args.queue}' as task {created_task.id}")
