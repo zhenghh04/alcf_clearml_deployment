@@ -1,6 +1,6 @@
 from clearml import PipelineController, Task
 
-DATA_ROOT = "/AuroraGPT/hzheng/"
+DATA_ROOT = "/eagle/AuroraGPT/hzheng/"
 MATH_REPO = "nvidia/Nemotron-Math-v2"
 CODE_REPO = "nvidia/Nemotron-Pretraining-Code-v2"
 MATH_DATASET_DIR = f"{DATA_ROOT}/{MATH_REPO}"
