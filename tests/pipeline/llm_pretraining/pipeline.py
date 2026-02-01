@@ -1,12 +1,15 @@
 from clearml import PipelineController, Task
 
-MATH_DATASET_DIR = "/eagle/AuroraGPT/hzheng/nvidia/Nemotron-Math-v2"
-CODE_DATASET_DIR = "/eagle/AuroraGPT/hzheng/nvidia/Nemotron-Pretraining-Code-v2"
-MATH_FUSED_DIR = "/eagle/AuroraGPT/hzheng/nvidia/Nemotron-Math-v2-fused"
-CODE_FUSED_DIR = "/eagle/AuroraGPT/hzheng/nvidia/Nemotron-Pretraining-Code-v2-fused"
-MATH_TOKENIZED_DIR = "/eagle/AuroraGPT/hzheng/nvidia/Nemotron-Math-v2-fused-tok"
-CODE_TOKENIZED_DIR = "/eagle/AuroraGPT/hzheng/nvidia/Nemotron-Pretraining-Code-v2-fused-tok"
-TOKENIZER_MODEL = "/eagle/AuroraGPT/hzheng/gemma-7b"
+DATA_ROOT = "/AuroraGPT/hzheng/"
+MATH_REPO = "nvidia/Nemotron-Math-v2"
+CODE_REPO = "nvidia/Nemotron-Pretraining-Code-v2"
+MATH_DATASET_DIR = f"{DATA_ROOT}/{MATH_REPO}"
+CODE_DATASET_DIR = f"{DATA_ROOT}/{CODE_REPO}"
+MATH_FUSED_DIR = f"{DATA_ROOT}/{MATH_REPO}-fused"
+CODE_FUSED_DIR = f"{DATA_ROOT}/{CODE_REPO}-fused"
+MATH_TOKENIZED_DIR = f"{DATA_ROOT}/{MATH_REPO}-fused-tok"
+CODE_TOKENIZED_DIR = f"{DATA_ROOT}/{CODE_REPO}-fused-tok"
+TOKENIZER_MODEL = "/AuroraGPT/hzheng/gemma-7b"
 
 
 download_math_task = Task.create(
@@ -18,11 +21,11 @@ download_math_task = Task.create(
     working_directory="./tests/pipeline/llm_pretraining",
     script="./tasks/download_nvidia_math_code.sh",
     binary="/bin/bash",
-)
-download_math_task.set_environment(
-    {
-        "DOWNLOAD_MODE": "math",
-    }
+    argparse_args=[
+        ("--data-root", DATA_ROOT),
+        ("--math-repo", MATH_REPO),
+        ("--mode", "math"),
+    ],
 )
 
 download_code_task = Task.create(
@@ -34,11 +37,11 @@ download_code_task = Task.create(
     working_directory="./tests/pipeline/llm_pretraining",
     script="./tasks/download_nvidia_math_code.sh",
     binary="/bin/bash",
-)
-download_code_task.set_environment(
-    {
-        "DOWNLOAD_MODE": "code",
-    }
+    argparse_args=[
+        ("--data-root", DATA_ROOT),
+        ("--code-repo", CODE_REPO),
+        ("--mode", "code"),
+    ],
 )
 
 check_code_access_task = Task.create(
@@ -50,11 +53,9 @@ check_code_access_task = Task.create(
     working_directory="./tests/pipeline/llm_pretraining",
     script="./tasks/check_hf_access.py",
     binary="python",
-)
-check_code_access_task.set_environment(
-    {
-        "HF_DATASET": "nvidia/Nemotron-Pretraining-Code-v2",
-    }
+    argparse_args=[
+        ("--dataset", CODE_REPO),
+    ],
 )
 
 check_math_access_task = Task.create(
@@ -66,22 +67,9 @@ check_math_access_task = Task.create(
     working_directory="./tests/pipeline/llm_pretraining",
     script="./tasks/check_hf_access.py",
     binary="python",
-)
-check_math_access_task.set_environment(
-    {
-        "HF_DATASET": "nvidia/Nemotron-Math-v2",
-    }
-)
-
-fuse_task = Task.create(
-    project_name="amsc/llm-pretraining",
-    task_name="fuse-small-files",
-    task_type=Task.TaskTypes.data_processing,
-    repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
-    branch="main",
-    working_directory="./tests/pipeline/llm_pretraining",
-    script="./tasks/fuse_files.sh",
-    binary="/bin/bash",
+    argparse_args=[
+        ("--dataset", MATH_REPO),
+    ],
 )
 
 fuse_math_task = Task.create(
@@ -93,12 +81,10 @@ fuse_math_task = Task.create(
     working_directory="./tests/pipeline/llm_pretraining",
     script="./tasks/fuse_files.sh",
     binary="/bin/bash",
-)
-fuse_math_task.set_environment(
-    {
-        "FUSE_INPUT_DIR": MATH_DATASET_DIR,
-        "FUSE_OUTPUT_DIR": MATH_FUSED_DIR,
-    }
+    argparse_args=[
+        ("--input-dir", MATH_DATASET_DIR),
+        ("--output-dir", MATH_FUSED_DIR),
+    ],
 )
 
 fuse_code_task = Task.create(
@@ -110,12 +96,10 @@ fuse_code_task = Task.create(
     working_directory="./tests/pipeline/llm_pretraining",
     script="./tasks/fuse_files.sh",
     binary="/bin/bash",
-)
-fuse_code_task.set_environment(
-    {
-        "FUSE_INPUT_DIR": CODE_DATASET_DIR,
-        "FUSE_OUTPUT_DIR": CODE_FUSED_DIR,
-    }
+    argparse_args=[
+        ("--input-dir", CODE_DATASET_DIR),
+        ("--output-dir", CODE_FUSED_DIR),
+    ],
 )
 
 tokenize_math_task = Task.create(
@@ -127,13 +111,11 @@ tokenize_math_task = Task.create(
     working_directory="./tests/pipeline/llm_pretraining",
     script="./tasks/tokenization.sh",
     binary="/bin/bash",
-)
-tokenize_math_task.set_environment(
-    {
-        "TOKEN_INPUT_DIR": MATH_FUSED_DIR,
-        "TOKEN_OUTPUT_DIR": MATH_TOKENIZED_DIR,
-        "TOKEN_TOKENIZER_MODEL": TOKENIZER_MODEL,
-    }
+    argparse_args=[
+        ("--input-dir", MATH_FUSED_DIR),
+        ("--output-dir", MATH_TOKENIZED_DIR),
+        ("--tokenizer-model", TOKENIZER_MODEL),
+    ],
 )
 
 tokenize_code_task = Task.create(
@@ -145,13 +127,11 @@ tokenize_code_task = Task.create(
     working_directory="./tests/pipeline/llm_pretraining",
     script="./tasks/tokenization.sh",
     binary="/bin/bash",
-)
-tokenize_code_task.set_environment(
-    {
-        "TOKEN_INPUT_DIR": CODE_FUSED_DIR,
-        "TOKEN_OUTPUT_DIR": CODE_TOKENIZED_DIR,
-        "TOKEN_TOKENIZER_MODEL": TOKENIZER_MODEL,
-    }
+    argparse_args=[
+        ("--input-dir", CODE_FUSED_DIR),
+        ("--output-dir", CODE_TOKENIZED_DIR),
+        ("--tokenizer-model", TOKENIZER_MODEL),
+    ],
 )
 
 pipe = PipelineController(
