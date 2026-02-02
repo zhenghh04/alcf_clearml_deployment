@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+export OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS:-1}"
 DATA_ROOT="${DOWNLOAD_DATA_ROOT:-/eagle/AuroraGPT/hzheng/datasets}"
 MATH_REPO="${DOWNLOAD_MATH_REPO:-nvidia/Nemotron-Math-v2}"
 CODE_REPO="${DOWNLOAD_CODE_REPO:-nvidia/Nemotron-Pretraining-Code-v2}"

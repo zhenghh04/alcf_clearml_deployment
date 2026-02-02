@@ -3,6 +3,7 @@ set -euo pipefail
 # set -x 
 # set conda environment
 
+export OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS:-1}"
 source /eagle/AuroraGPT/hzheng/pyenvs/blendcorpus/bin/activate
 INPUT_DIR="${FUSE_INPUT_DIR:-/eagle/AuroraGPT/hzheng/datasets/data}"
 OUTPUT_DIR="${FUSE_OUTPUT_DIR:-/eagle/AuroraGPT/hzheng/datasets/data-fused}"

@@ -1,5 +1,6 @@
 from clearml import PipelineController, Task
-
+import os
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
 DATA_ROOT = "/eagle/AuroraGPT/hzheng/"
 MATH_REPO = "nvidia/Nemotron-Math-v2"
 CODE_REPO = "nvidia/Nemotron-Pretraining-Code-v2"
