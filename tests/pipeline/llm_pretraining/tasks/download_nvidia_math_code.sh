@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DATA_ROOT="${DOWNLOAD_DATA_ROOT:-$HOME/eagle/AuroraGPT/hzheng/datasets}"
+DATA_ROOT="${DOWNLOAD_DATA_ROOT:-/eagle/AuroraGPT/hzheng/datasets}"
 MATH_REPO="${DOWNLOAD_MATH_REPO:-nvidia/Nemotron-Math-v2}"
 CODE_REPO="${DOWNLOAD_CODE_REPO:-nvidia/Nemotron-Pretraining-Code-v2}"
 MODE="${DOWNLOAD_MODE:-both}"
@@ -11,7 +11,7 @@ usage() {
 Usage: download_nvidia_math_code.sh [options]
 
 Options:
-  --data-root PATH   Output root (default: /AuroraGPT/hzheng/datasets)
+  --data-root PATH   Output root (default: /eagle/AuroraGPT/hzheng/datasets)
   --math-repo NAME   Math dataset repo (default: nvidia/Nemotron-Math-v2)
   --code-repo NAME   Code dataset repo (default: nvidia/Nemotron-Pretraining-Code-v2)
   --mode MODE        math|code|both (default: both)
