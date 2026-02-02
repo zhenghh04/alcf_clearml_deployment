@@ -9,7 +9,7 @@ MATH_FUSED_DIR = f"{DATA_ROOT}/{MATH_REPO}-fused"
 CODE_FUSED_DIR = f"{DATA_ROOT}/{CODE_REPO}-fused"
 MATH_TOKENIZED_DIR = f"{DATA_ROOT}/{MATH_REPO}-fused-tok"
 CODE_TOKENIZED_DIR = f"{DATA_ROOT}/{CODE_REPO}-fused-tok"
-TOKENIZER_MODEL = "/AuroraGPT/hzheng/gemma-7b"
+TOKENIZER_MODEL = "/eagle/AuroraGPT/hzheng/gemma-7b"
 
 
 download_math_task = Task.create(

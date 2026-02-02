@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DATA_ROOT="${DOWNLOAD_DATA_ROOT:-/AuroraGPT/hzheng/datasets}"
+DATA_ROOT="${DOWNLOAD_DATA_ROOT:-$HOME/eagle/AuroraGPT/hzheng/datasets}"
 MATH_REPO="${DOWNLOAD_MATH_REPO:-nvidia/Nemotron-Math-v2}"
 CODE_REPO="${DOWNLOAD_CODE_REPO:-nvidia/Nemotron-Pretraining-Code-v2}"
 MODE="${DOWNLOAD_MODE:-both}"
@@ -47,11 +47,23 @@ mkdir -p "${DATA_ROOT}"
 download_repo() {
   local repo="$1"
   echo "[download] Dataset -> ${DATA_ROOT}/${repo}"
-  huggingface-cli download \
-    --repo-type dataset \
-    --local-dir "${DATA_ROOT}/${repo}" \
-    --local-dir-use-symlinks False \
-    "${repo}"
+  python - "$repo" "$DATA_ROOT" <<'PY'
+import os
+import sys
+from huggingface_hub import snapshot_download
+
+repo = sys.argv[1]
+root = sys.argv[2]
+token = os.environ.get("HF_TOKEN")
+
+snapshot_download(
+    repo_id=repo,
+    repo_type="dataset",
+    local_dir=os.path.join(root, repo),
+    local_dir_use_symlinks=False,
+    token=token,
+)
+PY
 }
 
 case "${MODE}" in
