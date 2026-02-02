@@ -11,6 +11,21 @@ MATH_TOKENIZED_DIR = f"{DATA_ROOT}/{MATH_REPO}-fused-tok"
 CODE_TOKENIZED_DIR = f"{DATA_ROOT}/{CODE_REPO}-fused-tok"
 TOKENIZER_MODEL = "/eagle/AuroraGPT/hzheng/gemma-7b"
 
+download_code_task = Task.create(
+    project_name="amsc/llm-pretraining",
+    task_name="download-nvidia-code",
+    task_type=Task.TaskTypes.data_processing,
+    repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
+    branch="main",
+    working_directory="./tests/pipeline/llm_pretraining",
+    script="./tasks/download_nvidia_math_code.sh",
+    binary="/bin/bash",
+    argparse_args=[
+        ("--data-root", DATA_ROOT),
+        ("--code-repo", CODE_REPO),
+        ("--mode", "code"),
+    ],
+)
 
 download_math_task = Task.create(
     project_name="amsc/llm-pretraining",
@@ -28,21 +43,7 @@ download_math_task = Task.create(
     ],
 )
 
-download_code_task = Task.create(
-    project_name="amsc/llm-pretraining",
-    task_name="download-nvidia-code",
-    task_type=Task.TaskTypes.data_processing,
-    repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
-    branch="main",
-    working_directory="./tests/pipeline/llm_pretraining",
-    script="./tasks/download_nvidia_math_code.sh",
-    binary="/bin/bash",
-    argparse_args=[
-        ("--data-root", DATA_ROOT),
-        ("--code-repo", CODE_REPO),
-        ("--mode", "code"),
-    ],
-)
+
 
 check_code_access_task = Task.create(
     project_name="amsc/llm-pretraining",
@@ -142,19 +143,6 @@ pipe = PipelineController(
     docker="python:3.13-slim",
 )
 
-pipe.add_step(
-    name="download_math",
-    base_task_id=download_math_task.id,
-    execution_queue="crux-services",
-    parents=["check_math_access"],
-)
-
-pipe.add_step(
-    name="download_code",
-    base_task_id=download_code_task.id,
-    execution_queue="crux-services",
-    parents=["check_code_access"],
-)
 
 pipe.add_step(
     name="check_code_access",
@@ -166,6 +154,21 @@ pipe.add_step(
     name="check_math_access",
     base_task_id=check_math_access_task.id,
     execution_queue="crux-services",
+)
+
+
+pipe.add_step(
+    name="download_code",
+    base_task_id=download_code_task.id,
+    execution_queue="crux-services",
+    parents=["check_code_access"],
+)
+
+pipe.add_step(
+    name="download_math",
+    base_task_id=download_math_task.id,
+    execution_queue="crux-services",
+    parents=["check_math_access"],
 )
 
 pipe.add_step(
