@@ -14,7 +14,7 @@ TOKENIZER_MODEL = "/eagle/AuroraGPT/hzheng/gemma-7b"
 
 download_code_task = Task.create(
     project_name="amsc/llm-pretraining",
-    task_name="download-nvidia-code",
+    task_name="download-nvidia-code-v2",
     task_type=Task.TaskTypes.data_processing,
     repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
     branch="main",
@@ -30,7 +30,7 @@ download_code_task = Task.create(
 
 download_math_task = Task.create(
     project_name="amsc/llm-pretraining",
-    task_name="download-nvidia-math",
+    task_name="download-nvidia-math-v2",
     task_type=Task.TaskTypes.data_processing,
     repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
     branch="main",
