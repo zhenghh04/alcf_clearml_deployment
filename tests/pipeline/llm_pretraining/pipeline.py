@@ -22,9 +22,9 @@ download_code_task = Task.create(
     script="./tasks/download_nvidia_math_code.sh",
     binary="/bin/bash",
     argparse_args=[
-        ("--data-root", DATA_ROOT),
-        ("--code-repo", CODE_REPO),
-        ("--mode", "code"),
+        ("data-root", DATA_ROOT),
+        ("code-repo", CODE_REPO),
+        ("mode", "code"),
     ],
 )
 
@@ -38,9 +38,9 @@ download_math_task = Task.create(
     script="./tasks/download_nvidia_math_code.sh",
     binary="/bin/bash",
     argparse_args=[
-        ("--data-root", DATA_ROOT),
-        ("--math-repo", MATH_REPO),
-        ("--mode", "math"),
+        ("data-root", DATA_ROOT),
+        ("math-repo", MATH_REPO),
+        ("mode", "math"),
     ],
 )
 
@@ -56,7 +56,7 @@ check_code_access_task = Task.create(
     script="./tasks/check_hf_access.py",
     binary="python",
     argparse_args=[
-        ("--dataset", CODE_REPO),
+        ("dataset", CODE_REPO),
     ],
 )
 
@@ -70,7 +70,7 @@ check_math_access_task = Task.create(
     script="./tasks/check_hf_access.py",
     binary="python",
     argparse_args=[
-        ("--dataset", MATH_REPO),
+        ("dataset", MATH_REPO),
     ],
 )
 
@@ -84,8 +84,8 @@ fuse_math_task = Task.create(
     script="./tasks/fuse_files.sh",
     binary="/bin/bash",
     argparse_args=[
-        ("--input-dir", MATH_DATASET_DIR),
-        ("--output-dir", MATH_FUSED_DIR),
+        ("input-dir", MATH_DATASET_DIR),
+        ("output-dir", MATH_FUSED_DIR),
     ],
 )
 
@@ -99,8 +99,8 @@ fuse_code_task = Task.create(
     script="./tasks/fuse_files.sh",
     binary="/bin/bash",
     argparse_args=[
-        ("--input-dir", CODE_DATASET_DIR),
-        ("--output-dir", CODE_FUSED_DIR),
+        ("input-dir", CODE_DATASET_DIR),
+        ("output-dir", CODE_FUSED_DIR),
     ],
 )
 
@@ -114,9 +114,9 @@ tokenize_math_task = Task.create(
     script="./tasks/tokenization.sh",
     binary="/bin/bash",
     argparse_args=[
-        ("--input-dir", MATH_FUSED_DIR),
-        ("--output-dir", MATH_TOKENIZED_DIR),
-        ("--tokenizer-model", TOKENIZER_MODEL),
+        ("input-dir", MATH_FUSED_DIR),
+        ("output-dir", MATH_TOKENIZED_DIR),
+        ("tokenizer-model", TOKENIZER_MODEL),
     ],
 )
 
@@ -130,9 +130,9 @@ tokenize_code_task = Task.create(
     script="./tasks/tokenization.sh",
     binary="/bin/bash",
     argparse_args=[
-        ("--input-dir", CODE_FUSED_DIR),
-        ("--output-dir", CODE_TOKENIZED_DIR),
-        ("--tokenizer-model", TOKENIZER_MODEL),
+        ("input-dir", CODE_FUSED_DIR),
+        ("output-dir", CODE_TOKENIZED_DIR),
+        ("tokenizer-model", TOKENIZER_MODEL),
     ],
 )
 
