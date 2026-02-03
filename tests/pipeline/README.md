@@ -2,6 +2,10 @@
 
 This folder contains ClearML pipeline examples. Pipelines can dispatch steps to different queues, which allows you to run components across multiple supercomputers (one queue per system).
 
+![Multi-facility pipeline overview showing queues mapped to different systems.](../../.docs/figures/multi_facility.png)
+
+This diagram summarizes how a single ClearML pipeline can coordinate steps across multiple facilities by mapping each step to a queue tied to a specific system.
+
 ## Run on multiple queues (multiple systems)
 To run pipeline steps on multiple queues:
 

@@ -1,0 +1,5 @@
+clearml==2.0.6
+wandb==0.16.6
+mlflow==2.10.2
+torch==2.2.2
+torchvision==0.17.2
