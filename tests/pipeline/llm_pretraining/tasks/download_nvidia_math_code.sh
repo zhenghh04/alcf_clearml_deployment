@@ -6,7 +6,7 @@ export MKL_NUM_THREADS="${MKL_NUM_THREADS:-1}"
 export OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS:-1}"
 export NUMEXPR_NUM_THREADS="${NUMEXPR_NUM_THREADS:-1}"
 DATA_ROOT="${DOWNLOAD_DATA_ROOT:-/eagle/AuroraGPT/hzheng/datasets}"
-MATH_REPO="${DOWNLOAD_MATH_REPO:-nvidia/Nemotron-Math-v2}"
+MATH_REPO="${DOWNLOAD_MATH_REPO:-nvidia/Nemotron-CC-Math-v1}"
 CODE_REPO="${DOWNLOAD_CODE_REPO:-nvidia/Nemotron-Pretraining-Code-v2}"
 MODE="${DOWNLOAD_MODE:-both}"
 
@@ -16,7 +16,7 @@ Usage: download_nvidia_math_code.sh [options]
 
 Options:
   --data-root PATH   Output root (default: /eagle/AuroraGPT/hzheng/datasets)
-  --math-repo NAME   Math dataset repo (default: nvidia/Nemotron-Math-v2)
+  --math-repo NAME   Math dataset repo (default: nvidia/Nemotron-CC-Math-v1)
   --code-repo NAME   Code dataset repo (default: nvidia/Nemotron-Pretraining-Code-v2)
   --mode MODE        math|code|both (default: both)
   -h, --help         Show this help

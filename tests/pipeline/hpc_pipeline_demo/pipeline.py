@@ -68,7 +68,7 @@ pipe.add_step(
 pipe.add_step(
     name="train",
     base_task_id=train_task.id,
-    execution_queue="sophia-login",
+    execution_queue="sophia",
     parents=["prepare_data"],
 )
 pipe.add_step(

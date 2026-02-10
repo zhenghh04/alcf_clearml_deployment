@@ -1,82 +1,39 @@
 from clearml import PipelineController, Task
 import os
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
-DATA_ROOT = "/eagle/AuroraGPT/hzheng/"
-MATH_REPO = "nvidia/Nemotron-Math-v2"
-CODE_REPO = "nvidia/Nemotron-Pretraining-Code-v2"
-MATH_DATASET_DIR = f"{DATA_ROOT}/{MATH_REPO}"
-CODE_DATASET_DIR = f"{DATA_ROOT}/{CODE_REPO}"
-MATH_FUSED_DIR = f"{DATA_ROOT}/{MATH_REPO}-fused"
-CODE_FUSED_DIR = f"{DATA_ROOT}/{CODE_REPO}-fused"
-MATH_TOKENIZED_DIR = f"{DATA_ROOT}/{MATH_REPO}-fused-tok"
-CODE_TOKENIZED_DIR = f"{DATA_ROOT}/{CODE_REPO}-fused-tok"
+DATA_ROOT = "/eagle/AuroraGPT/hzheng/datasets"
+DATA_ROOT_AURORA = "/flare/AuroraGPT/hzheng/datasets"
+DOLMA_REPO = "allenai/dolma"
+DOLMA_REVISION = "main"
+DOLMA_VERSION = "v1_7"
+DOLMA_DATASET_DIR = f"{DATA_ROOT}/{DOLMA_REPO}/{DOLMA_VERSION}"
+DOLMA_FUSED_DIR = f"{DOLMA_DATASET_DIR}-fused"
+DOLMA_TOKENIZED_DIR = f"{DOLMA_FUSED_DIR}-tok"
+DOLMA_TOKENIZED_DIR_AURORA = f"{DATA_ROOT_AURORA}/{DOLMA_REPO}/{DOLMA_VERSION}-fused-tok"
 TOKENIZER_MODEL = "/eagle/AuroraGPT/hzheng/gemma-7b"
+CHECKPOINT_DIR = f"{DATA_ROOT_AURORA}/checkpoints/auroragpt-7b"
 
-download_code_task = Task.create(
+download_dolma_task = Task.create(
     project_name="amsc/llm-pretraining",
-    task_name="download-nvidia-code-v2",
+    task_name="download-dolma-v1.7",
     task_type=Task.TaskTypes.data_processing,
     repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
     branch="main",
     working_directory="./tests/pipeline/llm_pretraining",
-    script="./tasks/download_nvidia_math_code.sh",
+    script="./tasks/download_dolma_v1.7.sh",
     binary="/bin/bash",
     argparse_args=[
         ("data-root", DATA_ROOT),
-        ("code-repo", CODE_REPO),
-        ("mode", "code"),
+        ("repo-id", DOLMA_REPO),
+        ("revision", DOLMA_REVISION),
+        ("dolma-version", DOLMA_VERSION),
+        ("num-workers", "8"),
     ],
 )
 
-download_math_task = Task.create(
+fuse_dolma_task = Task.create(
     project_name="amsc/llm-pretraining",
-    task_name="download-nvidia-math-v2",
-    task_type=Task.TaskTypes.data_processing,
-    repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
-    branch="main",
-    working_directory="./tests/pipeline/llm_pretraining",
-    script="./tasks/download_nvidia_math_code.sh",
-    binary="/bin/bash",
-    argparse_args=[
-        ("data-root", DATA_ROOT),
-        ("math-repo", MATH_REPO),
-        ("mode", "math"),
-    ],
-)
-
-
-
-check_code_access_task = Task.create(
-    project_name="amsc/llm-pretraining",
-    task_name="check-code-access",
-    task_type=Task.TaskTypes.data_processing,
-    repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
-    branch="main",
-    working_directory="./tests/pipeline/llm_pretraining",
-    script="./tasks/check_hf_access.py",
-    binary="python",
-    argparse_args=[
-        ("dataset", CODE_REPO),
-    ],
-)
-
-check_math_access_task = Task.create(
-    project_name="amsc/llm-pretraining",
-    task_name="check-math-access",
-    task_type=Task.TaskTypes.data_processing,
-    repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
-    branch="main",
-    working_directory="./tests/pipeline/llm_pretraining",
-    script="./tasks/check_hf_access.py",
-    binary="python",
-    argparse_args=[
-        ("dataset", MATH_REPO),
-    ],
-)
-
-fuse_math_task = Task.create(
-    project_name="amsc/llm-pretraining",
-    task_name="fuse-math-files",
+    task_name="fuse-dolma-v1.7-files",
     task_type=Task.TaskTypes.data_processing,
     repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
     branch="main",
@@ -84,29 +41,14 @@ fuse_math_task = Task.create(
     script="./tasks/fuse_files.sh",
     binary="/bin/bash",
     argparse_args=[
-        ("input-dir", MATH_DATASET_DIR),
-        ("output-dir", MATH_FUSED_DIR),
+        ("input-dir", DOLMA_DATASET_DIR),
+        ("output-dir", DOLMA_FUSED_DIR),
     ],
 )
 
-fuse_code_task = Task.create(
+tokenize_dolma_task = Task.create(
     project_name="amsc/llm-pretraining",
-    task_name="fuse-code-files",
-    task_type=Task.TaskTypes.data_processing,
-    repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
-    branch="main",
-    working_directory="./tests/pipeline/llm_pretraining",
-    script="./tasks/fuse_files.sh",
-    binary="/bin/bash",
-    argparse_args=[
-        ("input-dir", CODE_DATASET_DIR),
-        ("output-dir", CODE_FUSED_DIR),
-    ],
-)
-
-tokenize_math_task = Task.create(
-    project_name="amsc/llm-pretraining",
-    task_name="tokenize-math-dataset",
+    task_name="tokenize-dolma-v1.7-dataset",
     task_type=Task.TaskTypes.data_processing,
     repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
     branch="main",
@@ -114,25 +56,49 @@ tokenize_math_task = Task.create(
     script="./tasks/tokenization.sh",
     binary="/bin/bash",
     argparse_args=[
-        ("input-dir", MATH_FUSED_DIR),
-        ("output-dir", MATH_TOKENIZED_DIR),
+        ("input-dir", DOLMA_FUSED_DIR),
+        ("output-dir", DOLMA_TOKENIZED_DIR),
         ("tokenizer-model", TOKENIZER_MODEL),
     ],
 )
 
-tokenize_code_task = Task.create(
+train_auroragpt_7b_task = Task.create(
     project_name="amsc/llm-pretraining",
-    task_name="tokenize-code-dataset",
+    task_name="train-auroragpt-7b",
+    task_type=Task.TaskTypes.training,
+    repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
+    branch="main",
+    working_directory="./tests/pipeline/llm_pretraining",
+    script="./tasks/train_auroragpt_7b.sh",
+    binary="/bin/bash",
+    argparse_args=[
+        ("data-paths", DOLMA_TOKENIZED_DIR_AURORA),
+        ("output-dir", CHECKPOINT_DIR),
+        ("dry-run", "1"),
+    ],
+)
+
+train_auroragpt_7b_task.set_user_properties(
+    walltime="02:00:00",
+    num_nodes=1,
+    account="datascience",
+    queue="debug",
+)
+
+transfer_to_aurora_task = Task.create(
+    project_name="amsc/llm-pretraining",
+    task_name="transfer-dolma-tokenized-to-aurora",
     task_type=Task.TaskTypes.data_processing,
     repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
     branch="main",
     working_directory="./tests/pipeline/llm_pretraining",
-    script="./tasks/tokenization.sh",
+    script="./tasks/transfer_tokenized_to_aurora.sh",
     binary="/bin/bash",
     argparse_args=[
-        ("input-dir", CODE_FUSED_DIR),
-        ("output-dir", CODE_TOKENIZED_DIR),
-        ("tokenizer-model", TOKENIZER_MODEL),
+        ("src-path", DOLMA_TOKENIZED_DIR),
+        ("dst-path", DOLMA_TOKENIZED_DIR_AURORA),
+        ("recursive", "1"),
+        ("poll-interval", "30"),
     ],
 )
 
@@ -146,58 +112,37 @@ pipe = PipelineController(
 
 
 pipe.add_step(
-    name="check_code_access",
-    base_task_id=check_code_access_task.id,
+    name="download_dolma",
+    base_task_id=download_dolma_task.id,
     execution_queue="crux-services",
 )
 
 pipe.add_step(
-    name="check_math_access",
-    base_task_id=check_math_access_task.id,
+    name="fuse_dolma_files",
+    base_task_id=fuse_dolma_task.id,
+    execution_queue="crux",
+    parents=["download_dolma"],
+)
+
+pipe.add_step(
+    name="tokenize_dolma",
+    base_task_id=tokenize_dolma_task.id,
+    execution_queue="crux",
+    parents=["fuse_dolma_files"],
+)
+
+pipe.add_step(
+    name="transfer_tokenized_to_aurora",
+    base_task_id=transfer_to_aurora_task.id,
     execution_queue="crux-services",
-)
-
-
-pipe.add_step(
-    name="download_code",
-    base_task_id=download_code_task.id,
-    execution_queue="crux-services",
-    parents=["check_code_access"],
+    parents=["tokenize_dolma"],
 )
 
 pipe.add_step(
-    name="download_math",
-    base_task_id=download_math_task.id,
-    execution_queue="crux-services",
-    parents=["check_math_access"],
-)
-
-pipe.add_step(
-    name="fuse_math_files",
-    base_task_id=fuse_math_task.id,
-    execution_queue="crux",
-    parents=["download_math"],
-)
-
-pipe.add_step(
-    name="fuse_code_files",
-    base_task_id=fuse_code_task.id,
-    execution_queue="crux",
-    parents=["download_code"],
-)
-
-pipe.add_step(
-    name="tokenize_math",
-    base_task_id=tokenize_math_task.id,
-    execution_queue="crux",
-    parents=["fuse_math_files"],
-)
-
-pipe.add_step(
-    name="tokenize_code",
-    base_task_id=tokenize_code_task.id,
-    execution_queue="crux",
-    parents=["fuse_code_files"],
+    name="train_auroragpt_7b",
+    base_task_id=train_auroragpt_7b_task.id,
+    execution_queue="aurora",
+    parents=["transfer_tokenized_to_aurora"],
 )
 
 pipe.start(queue="crux-services")

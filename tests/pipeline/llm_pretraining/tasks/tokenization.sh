@@ -8,8 +8,9 @@ export NUMEXPR_NUM_THREADS="${NUMEXPR_NUM_THREADS:-1}"
 source /eagle/AuroraGPT/hzheng/pyenvs/blendcorpus/bin/activate
 INPUT_DIR="${TOKEN_INPUT_DIR:-/eagle/AuroraGPT/hzheng/datasets/data-fused}"
 OUTPUT_DIR="${TOKEN_OUTPUT_DIR:-/eagle/AuroraGPT/hzheng/datasets/data-fused-tok}"
-TOKENIZER_TYPE="${TOKEN_TOKENIZER_TYPE:-"HFTokenizer"}"
-TOKENIZER_MODEL="${TOKEN_TOKENIZER_MODEL:-"/eagle/AuroraGPT/hzheng/gemma-7b/}"
+TOKENIZER_TYPE="${TOKEN_TOKENIZER_TYPE:-HFTokenizer}"
+TOKENIZER_MODEL="${TOKEN_TOKENIZER_MODEL:-/eagle/AuroraGPT/hzheng/gemma-7b/}"
+COLUMN_NAME="${TOKEN_COLUMN_NAME:-text}"
 NUM_WORKERS="${TOKEN_NUM_WORKERS:-16}"
 PPN="${TOKEN_PPN:-4}"
 DEPTH="${TOKEN_DEPTH:-16}"
@@ -31,6 +32,7 @@ Options:
   --nprocs N              Override total MPI ranks (default: PBS_JOBSIZE*PPN)
   --append-eod            Append end-of-document token (default: on)
   --no-append-eod         Disable end-of-document token
+  --column-name NAME      Column name to tokenize (default: text)
   -h, --help              Show this help
 USAGE
 }
@@ -59,6 +61,8 @@ while [[ $# -gt 0 ]]; do
       APPEND_EOD=0; shift ;;
     -h|--help)
       usage; exit 0 ;;
+    --column-name)
+      COLUMN_NAME="$2"; shift 2 ;;
     *)
       echo "Unknown option: $1" >&2
       usage
@@ -112,6 +116,7 @@ mpiexec -n "${NPROCS}" --ppn "${PPN}" --cpu-bind depth -d "${DEPTH}" \
   --num-workers "${NUM_WORKERS}" \
   --tokenizer-type "${TOKENIZER_TYPE}" \
   --tokenizer-model "${TOKENIZER_MODEL}" \
+  --keys "${COLUMN_NAME}" \
   ${append_flag}
 
 echo "[tokenization] Done"
