@@ -62,3 +62,13 @@ Queue templates are in:
 - `clients/sirius/pbs.template`
 
 Adjust walltime, nodes, account, and other scheduler directives as needed for your project.
+
+## Perlmutter (draft)
+An initial Perlmutter client bootstrap is available under:
+- `clients/perlmutter/README.md`
+- `clients/perlmutter/setup_env.sh`
+
+Create the environment with:
+```bash
+bash clients/perlmutter/setup_env.sh
+```
