@@ -27,8 +27,15 @@ CLIENT=sirius QUEUE=sirius bash clients/launch_clearml_agent.sh
 ```
 
 This starts:
-- a PBS-backed agent using `clients/<CLIENT>/pbs.template`
+- a scheduler-backed agent using `clients/<CLIENT>/<scheduler>.template`
 - a login-node agent queue named `<QUEUE>-login`
+- a services queue named `<QUEUE>-services`
+
+Scheduler is auto-detected from `clients/<CLIENT>/system.conf`:
+```bash
+SCHEDULER=pbs
+```
+You can always override it with `SCHEDULER=pbs|slurm`.
 
 ## Repo checkout cache and filesystem issues
 If the agent fails to checkout the repo (e.g., `not a git repository` or missing files under `_execute_.../task_repository`), point the cache to a local writable filesystem and clear stale caches:
@@ -60,6 +67,7 @@ Queue templates are in:
 - `clients/crux/pbs.template`
 - `clients/polaris/pbs.template`
 - `clients/sirius/pbs.template`
+- `clients/perlmutter/slurm.template`
 
 Adjust walltime, nodes, account, and other scheduler directives as needed for your project.
 
@@ -72,3 +80,12 @@ Create the environment with:
 ```bash
 bash clients/perlmutter/setup_env.sh
 ```
+
+## SSH Tunnel To ClearML
+Use this helper to open the SSH tunnel using your `~/.ssh/config` host alias:
+```bash
+SSH_TUNNEL_TARGET=clearml bash clients/ssh_tunnel_clearml.sh
+```
+
+Useful optional variables (can be set in `clients/.env`):
+- `SSH_TUNNEL_TARGET` (for example `clearml` from your `~/.ssh/config`)
