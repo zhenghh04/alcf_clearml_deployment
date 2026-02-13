@@ -1,0 +1,16 @@
+#!/bin/bash
+#SBATCH --job-name=clearml_${CLEARML_TASK.id}
+#SBATCH --time=${CLEARML_TASK.hyperparams.properties.walltime.value:01:00:00}
+#SBATCH --nodes=${CLEARML_TASK.hyperparams.properties.num_nodes.value:1}
+#SBATCH --ntasks-per-node=${CLEARML_TASK.hyperparams.properties.ntasks_per_node.value:1}
+#SBATCH --cpus-per-task=${CLEARML_TASK.hyperparams.properties.cpus_per_task.value:1}
+#SBATCH --account=${CLEARML_TASK.hyperparams.properties.account.value:m0000}
+#SBATCH --qos=${CLEARML_TASK.hyperparams.properties.qos.value:regular}
+#SBATCH --constraint=${CLEARML_TASK.hyperparams.properties.constraint.value:cpu}
+#SBATCH --output=clearml_%j.out
+
+${CLEARML_PRE_SETUP}
+
+${CLEARML_AGENT_EXECUTE}
+
+${CLEARML_POST_SETUP}
