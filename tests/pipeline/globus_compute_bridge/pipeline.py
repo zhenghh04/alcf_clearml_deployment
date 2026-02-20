@@ -33,7 +33,7 @@ def main() -> None:
     )
     submit_task.set_user_properties(
         account=os.getenv("GLOBUS_ACCOUNT", "datascience"),
-        queue=os.getenv("GLOBUS_QUEUE"),
+        queue=os.getenv("GLOBUS_QUEUE", 'by-gpu'),
         partition=os.getenv("GLOBUS_PARTITION"),
         num_nodes=int(os.getenv("GLOBUS_NUM_NODES", "1")),
         cores_per_node=(
@@ -41,7 +41,7 @@ def main() -> None:
             if os.getenv("GLOBUS_CORES_PER_NODE")
             else None
         ),
-        walltime=os.getenv("GLOBUS_WALLTIME"),
+        walltime=os.getenv("GLOBUS_WALLTIME", "0:10:00"),
     )
 
     postprocess_task = Task.create(
