@@ -167,6 +167,11 @@ def callback(code: str = Query(...), state: str = Query(...)) -> JSONResponse:
         raise HTTPException(status_code=400, detail=f"Invalid state: {exc}")
 
     auth_client = _make_auth_client()
+    auth_client.oauth2_start_flow(
+        redirect_uri=settings.globus_redirect_uri,
+        requested_scopes=settings.globus_scopes,
+        refresh_tokens=True,
+    )
     # Globus SDK signatures differ by version; redirect URI is already fixed in the
     # authorize request and should match app registration.
     try:
