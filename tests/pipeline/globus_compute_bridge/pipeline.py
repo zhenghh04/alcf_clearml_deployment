@@ -95,7 +95,7 @@ def main() -> None:
         name="postprocess",
         base_task_id=postprocess_task.id,
         execution_queue=QUEUE,
-        parents=["submit_on_globus"],
+        parents=["globus_submit"],
     )
 
     pipe.start(queue=QUEUE)
