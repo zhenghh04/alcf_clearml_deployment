@@ -4,14 +4,20 @@ import operator
 import os
 import time
 from pathlib import Path
+from typing import Any, Dict
 
 from clearml import Task
 from globus_compute_sdk import Executor
 
+DEFAULT_ENDPOINT_ID = "fad4d968-8c9a-45ce-9fb4-60a9ab90be60"
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--endpoint-id", default=os.getenv("GLOBUS_COMPUTE_ENDPOINT_ID"))
+    parser.add_argument(
+        "--endpoint-id",
+        default=os.getenv("GLOBUS_COMPUTE_ENDPOINT_ID", DEFAULT_ENDPOINT_ID),
+    )
     parser.add_argument("--input-value", type=int, default=7)
     parser.add_argument("--poll-interval", type=int, default=5)
     parser.add_argument("--timeout-sec", type=int, default=900)
@@ -19,13 +25,26 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def read_param(params: dict, name: str) -> str:
+def flatten_params(params: Dict[str, Any], prefix: str = "") -> Dict[str, Any]:
+    flattened: Dict[str, Any] = {}
+    for key, value in params.items():
+        full_key = f"{prefix}/{key}" if prefix else str(key)
+        if isinstance(value, dict):
+            flattened.update(flatten_params(value, full_key))
+        else:
+            flattened[full_key] = value
+    return flattened
+
+
+def read_param(params: Dict[str, Any], name: str) -> str:
+    flat = flatten_params(params)
     candidate_suffixes = [
         f"/{name}",
         f"/{name.replace('_', '-')}",
         f"/{name.replace('-', '_')}",
+        f"/--{name.replace('_', '-')}",
     ]
-    for key, value in params.items():
+    for key, value in flat.items():
         for suffix in candidate_suffixes:
             if key.endswith(suffix) and value not in (None, ""):
                 return str(value)
@@ -43,10 +62,10 @@ def main() -> int:
     task.connect(vars(args), name="bridge")
     logger = task.get_logger()
 
-    endpoint_id = args.endpoint_id or read_param(
-        task.get_parameters_as_dict(cast=True), "endpoint_id"
-    )
+    task_params = task.get_parameters_as_dict(cast=True)
+    endpoint_id = args.endpoint_id or read_param(task_params, "endpoint_id")
     if not endpoint_id:
+        logger.report_text(f"Parameter keys visible to task: {sorted(flatten_params(task_params).keys())}")
         raise ValueError(
             "endpoint-id is required. Set --endpoint-id or GLOBUS_COMPUTE_ENDPOINT_ID."
         )
