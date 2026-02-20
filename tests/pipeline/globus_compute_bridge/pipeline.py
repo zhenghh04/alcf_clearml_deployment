@@ -46,7 +46,7 @@ def main() -> None:
         input_value=7,
         poll_interval=5,
         timeout_sec=900,
-        script=os.getenv("GLOBUS_SCRIPT", "./tasks/globus_script.sh"),
+        script=os.getenv("GLOBUS_SCRIPT", "/home/hzheng/alcf_clearml_evaluation/tests/pipeline/globus_compute_bridge/tasks/globus_script.sh"),
         script_args=shlex.split(os.getenv("GLOBUS_SCRIPT_ARGS", "")),
         binary=os.getenv("GLOBUS_BINARY", "/bin/bash"),
         account=account,
