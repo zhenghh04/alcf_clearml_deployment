@@ -23,6 +23,7 @@ class GlobusComputeLauncher:
         launcher_binary: str = "python",
         launcher_working_directory: Optional[str] = None,
         script_working_directory: Optional[str] = None,
+        clone_repo_for_script: bool = True,
         input_value: int = 7,
         poll_interval: int = 5,
         timeout_sec: int = 900,
@@ -75,6 +76,11 @@ class GlobusComputeLauncher:
                 argparse_args.append(("working-directory", script_working_directory))
             if script_args:
                 argparse_args.append(("script-args-json", json.dumps(list(script_args))))
+            if clone_repo_for_script and not os.path.isabs(script):
+                argparse_args.append(("clone-repo", "true"))
+                argparse_args.append(("repo-url", repo))
+                argparse_args.append(("repo-branch", branch))
+                argparse_args.append(("repo-working-directory", working_directory))
 
         task = Task.create(
             project_name=project_name,

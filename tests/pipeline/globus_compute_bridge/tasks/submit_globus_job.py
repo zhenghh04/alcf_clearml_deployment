@@ -2,7 +2,6 @@ import argparse
 import json
 import operator
 import os
-import subprocess
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -32,6 +31,13 @@ def _parse_positive_int(value: str) -> Optional[int]:
     return parsed
 
 
+def _parse_bool(value: Any, default: bool = False) -> bool:
+    normalized = _normalize_optional_str(value).lower()
+    if not normalized:
+        return default
+    return normalized in {"1", "true", "yes", "y", "on"}
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -53,6 +59,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--script-args-json", default="")
     parser.add_argument("--binary", default="")
     parser.add_argument("--working-directory", default="")
+    parser.add_argument("--repo-url", default="")
+    parser.add_argument("--repo-branch", default="")
+    parser.add_argument("--repo-working-directory", default="")
+    parser.add_argument("--clone-repo", default="")
     return parser.parse_args()
 
 
@@ -136,20 +146,77 @@ def parse_script_args(args: argparse.Namespace) -> List[str]:
     return [str(item) for item in parsed]
 
 
+def _preview(text: str, max_lines: int = 20) -> str:
+    if not text:
+        return ""
+    lines = text.splitlines()
+    if len(lines) <= max_lines:
+        return text
+    head = "\n".join(lines[:max_lines])
+    return f"{head}\n... ({len(lines) - max_lines} more lines)"
+
+
 def run_script(
     script_path: str,
     script_args: List[str],
     binary: str,
     working_directory: Optional[str],
+    repo_url: Optional[str],
+    repo_branch: Optional[str],
+    repo_working_directory: Optional[str],
+    clone_repo: bool,
 ) -> Dict[str, Any]:
     # Keep imports inside the remotely executed function to avoid missing globals
     # when deserialized on endpoint workers with different Python environments.
+    import os
     import subprocess
+    import tempfile
 
-    cmd = [binary, script_path] + script_args
+    checkout_root = ""
+    run_cwd = working_directory or None
+    resolved_script_path = script_path
+
+    if clone_repo:
+        if not repo_url:
+            raise ValueError("clone_repo is enabled but repo_url is empty")
+        checkout_root = tempfile.mkdtemp(prefix="globus_repo_")
+        clone_cmd = ["git", "clone", "--depth", "1", repo_url, checkout_root]
+        if repo_branch:
+            clone_cmd = ["git", "clone", "--depth", "1", "--branch", repo_branch, repo_url, checkout_root]
+        clone_completed = subprocess.run(
+            clone_cmd,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if clone_completed.returncode != 0:
+            return {
+                "mode": "remote_script",
+                "clone_repo": True,
+                "repo_url": repo_url,
+                "repo_branch": repo_branch,
+                "clone_command": clone_cmd,
+                "return_code": clone_completed.returncode,
+                "stdout": clone_completed.stdout,
+                "stderr": clone_completed.stderr,
+            }
+
+        run_cwd = checkout_root
+        if repo_working_directory:
+            repo_rel_dir = repo_working_directory.lstrip("./")
+            run_cwd = os.path.join(checkout_root, repo_rel_dir)
+        resolved_script_path = (
+            script_path
+            if os.path.isabs(script_path)
+            else os.path.join(checkout_root, script_path.lstrip("./"))
+        )
+    elif run_cwd and not os.path.isabs(script_path):
+        resolved_script_path = os.path.join(run_cwd, script_path.lstrip("./"))
+
+    cmd = [binary, resolved_script_path] + script_args
     completed = subprocess.run(
         cmd,
-        cwd=working_directory or None,
+        cwd=run_cwd,
         capture_output=True,
         text=True,
         check=False,
@@ -157,6 +224,12 @@ def run_script(
     return {
         "mode": "remote_script",
         "command": cmd,
+        "clone_repo": clone_repo,
+        "repo_url": repo_url,
+        "repo_branch": repo_branch,
+        "repo_working_directory": repo_working_directory,
+        "resolved_script_path": resolved_script_path,
+        "cwd": run_cwd,
         "return_code": completed.returncode,
         "stdout": completed.stdout,
         "stderr": completed.stderr,
@@ -195,6 +268,14 @@ def main() -> int:
     script_working_directory = _normalize_optional_str(args.working_directory) or _normalize_optional_str(
         read_param(task_params, "working_directory")
     )
+    repo_url = _normalize_optional_str(args.repo_url) or _normalize_optional_str(read_param(task_params, "repo_url"))
+    repo_branch = _normalize_optional_str(args.repo_branch) or _normalize_optional_str(
+        read_param(task_params, "repo_branch")
+    )
+    repo_working_directory = _normalize_optional_str(args.repo_working_directory) or _normalize_optional_str(
+        read_param(task_params, "repo_working_directory")
+    )
+    clone_repo = _parse_bool(args.clone_repo or read_param(task_params, "clone_repo"), default=False)
     script_args = parse_script_args(args)
 
     with Executor(
@@ -207,12 +288,21 @@ def main() -> int:
             logger.report_text(
                 f"Executing script via Globus: binary={binary} script={script}"
             )
+            if clone_repo:
+                logger.report_text(
+                    f"clone_repo enabled: repo={repo_url} branch={repo_branch or 'default'} "
+                    f"repo_working_directory={repo_working_directory or '.'}"
+                )
             future = executor.submit(
                 run_script,
                 script,
                 script_args,
                 binary,
                 script_working_directory or None,
+                repo_url or None,
+                repo_branch or None,
+                repo_working_directory or None,
+                clone_repo,
             )
         else:
             logger.report_text(f"Executing default multiply payload={args.input_value}")
@@ -263,7 +353,38 @@ def main() -> int:
     artifact_path = Path(args.artifact_path)
     artifact_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
     task.upload_artifact(name="globus_result", artifact_object=str(artifact_path))
-    logger.report_text(f"Completed Globus Compute execution: {result}")
+    if script:
+        remote_result = result.get("remote_result", {}) if isinstance(result, dict) else {}
+        stdout_text = str(remote_result.get("stdout", ""))
+        stderr_text = str(remote_result.get("stderr", ""))
+
+        stdout_path = Path("globus_stdout.txt")
+        stdout_path.write_text(stdout_text, encoding="utf-8")
+        task.upload_artifact(name="globus_stdout", artifact_object=str(stdout_path))
+
+        if stderr_text:
+            stderr_path = Path("globus_stderr.txt")
+            stderr_path.write_text(stderr_text, encoding="utf-8")
+            task.upload_artifact(name="globus_stderr", artifact_object=str(stderr_path))
+
+        logger.report_text(
+            "Completed Globus Compute execution:\n"
+            f"- mode: script\n"
+            f"- command: {remote_result.get('command')}\n"
+            f"- return_code: {remote_result.get('return_code')}\n"
+            f"- cwd: {remote_result.get('cwd')}\n"
+            f"- resolved_script_path: {remote_result.get('resolved_script_path')}\n"
+            f"- elapsed_sec: {elapsed:.2f}\n"
+            f"- stdout_preview:\n{_preview(stdout_text)}"
+        )
+    else:
+        logger.report_text(
+            "Completed Globus Compute execution:\n"
+            "- mode: default_multiply\n"
+            f"- input: {result.get('input')}\n"
+            f"- output: {result.get('output')}\n"
+            f"- elapsed_sec: {elapsed:.2f}"
+        )
     return 0
 
 
