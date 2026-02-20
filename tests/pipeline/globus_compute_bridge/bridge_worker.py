@@ -44,14 +44,39 @@ def fetch_candidates(project: str, bridge_tag: str) -> list:
 def execute_via_globus(task: Task, endpoint_id: str, task_timeout_sec: int) -> dict:
     params = task.get_parameters_as_dict(cast=True)
     input_value = int(read_param(params, "input_value", default="7"))
+    endpoint_config: Dict[str, Any] = {}
+    account = read_param(params, "account")
+    scheduler_queue = read_param(params, "scheduler_queue")
+    partition = read_param(params, "partition")
+    num_nodes = read_param(params, "num_nodes")
+    cores_per_node = read_param(params, "cores_per_node")
+    walltime = read_param(params, "walltime")
+
+    if account:
+        endpoint_config["account"] = account
+    if scheduler_queue:
+        endpoint_config["queue"] = scheduler_queue
+    if partition:
+        endpoint_config["partition"] = partition
+    if num_nodes:
+        endpoint_config["num_nodes"] = int(num_nodes)
+    if cores_per_node:
+        endpoint_config["cores_per_node"] = int(cores_per_node)
+    if walltime:
+        endpoint_config["walltime"] = walltime
 
     start = time.time()
     logger = task.get_logger()
     logger.report_text(
         f"Bridge worker submitting task {task.id} with input_value={input_value}"
     )
+    if endpoint_config:
+        logger.report_text(f"Bridge worker endpoint config: {endpoint_config}")
 
-    with Executor(endpoint_id=endpoint_id) as executor:
+    with Executor(
+        endpoint_id=endpoint_id,
+        user_endpoint_config=endpoint_config or None,
+    ) as executor:
         # Use stdlib callable to avoid Python minor-version bytecode mismatch issues.
         future = executor.submit(operator.mul, input_value, input_value)
         while not future.done():
