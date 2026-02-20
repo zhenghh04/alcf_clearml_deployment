@@ -167,10 +167,15 @@ def callback(code: str = Query(...), state: str = Query(...)) -> JSONResponse:
         raise HTTPException(status_code=400, detail=f"Invalid state: {exc}")
 
     auth_client = _make_auth_client()
-    token_response = auth_client.oauth2_exchange_code_for_tokens(
-        code,
-        redirect_uri=settings.globus_redirect_uri,
-    )
+    # Globus SDK signatures differ by version; redirect URI is already fixed in the
+    # authorize request and should match app registration.
+    try:
+        token_response = auth_client.oauth2_exchange_code_for_tokens(code)
+    except TypeError:
+        token_response = auth_client.oauth2_exchange_code_for_tokens(
+            code,
+            redirect_uri=settings.globus_redirect_uri,
+        )
 
     token_bundle = _extract_funcx_tokens(token_response)
     token_store.put_token_bundle(
