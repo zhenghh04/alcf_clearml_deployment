@@ -1,6 +1,7 @@
 import argparse
 import json
 import operator
+import os
 import time
 from pathlib import Path
 
@@ -10,12 +11,25 @@ from globus_compute_sdk import Executor
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--endpoint-id", required=True)
+    parser.add_argument("--endpoint-id", default=os.getenv("GLOBUS_COMPUTE_ENDPOINT_ID"))
     parser.add_argument("--input-value", type=int, default=7)
     parser.add_argument("--poll-interval", type=int, default=5)
     parser.add_argument("--timeout-sec", type=int, default=900)
     parser.add_argument("--artifact-path", default="globus_result.json")
     return parser.parse_args()
+
+
+def read_param(params: dict, name: str) -> str:
+    candidate_suffixes = [
+        f"/{name}",
+        f"/{name.replace('_', '-')}",
+        f"/{name.replace('-', '_')}",
+    ]
+    for key, value in params.items():
+        for suffix in candidate_suffixes:
+            if key.endswith(suffix) and value not in (None, ""):
+                return str(value)
+    return ""
 
 
 def main() -> int:
@@ -29,14 +43,22 @@ def main() -> int:
     task.connect(vars(args), name="bridge")
     logger = task.get_logger()
 
+    endpoint_id = args.endpoint_id or read_param(
+        task.get_parameters_as_dict(cast=True), "endpoint_id"
+    )
+    if not endpoint_id:
+        raise ValueError(
+            "endpoint-id is required. Set --endpoint-id or GLOBUS_COMPUTE_ENDPOINT_ID."
+        )
+
     start = time.time()
     logger.report_text(
-        f"Submitting payload={args.input_value} to Globus endpoint {args.endpoint_id}"
+        f"Submitting payload={args.input_value} to Globus endpoint {endpoint_id}"
     )
 
     my_config = {"account": "datascience"}
 
-    with Executor(endpoint_id=args.endpoint_id, user_endpoint_config=my_config) as executor:
+    with Executor(endpoint_id=endpoint_id, user_endpoint_config=my_config) as executor:
         # Use stdlib callable to avoid Python minor-version bytecode mismatch issues.
         future = executor.submit(operator.mul, args.input_value, args.input_value)
         while not future.done():

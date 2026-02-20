@@ -18,10 +18,10 @@ def main() -> None:
         script="./tasks/submit_globus_job.py",
         binary="python",
         argparse_args=[
-            ("endpoint-id", ENDPOINT_ID),
-            ("input-value", "7"),
-            ("poll-interval", "5"),
-            ("timeout-sec", "900"),
+            ("--endpoint-id", ENDPOINT_ID),
+            ("--input-value", "7"),
+            ("--poll-interval", "5"),
+            ("--timeout-sec", "900"),
         ],
     )
 
@@ -37,7 +37,7 @@ def main() -> None:
         working_directory="./tests/pipeline/globus_compute_bridge",
         script="./tasks/postprocess_results.py",
         binary="python",
-        argparse_args=[("expected-min-output", "1")],
+        argparse_args=[("--expected-min-output", "1")],
     )
 
     pipe = PipelineController(
