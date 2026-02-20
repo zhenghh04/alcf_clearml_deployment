@@ -9,8 +9,27 @@ from typing import Any, Dict, List, Optional
 
 from clearml import Task
 from globus_compute_sdk import Executor
+from globus_compute_sdk.serialize import AllCodeStrategies, ComputeSerializer
 
 DEFAULT_ENDPOINT_ID = "fad4d968-8c9a-45ce-9fb4-60a9ab90be60"
+
+
+def _normalize_optional_str(value: Any) -> str:
+    if value is None:
+        return ""
+    normalized = str(value).strip()
+    if normalized.lower() in {"", "none", "null"}:
+        return ""
+    return normalized
+
+
+def _parse_positive_int(value: str) -> Optional[int]:
+    if not value:
+        return None
+    parsed = int(value)
+    if parsed <= 0:
+        return None
+    return parsed
 
 
 def parse_args() -> argparse.Namespace:
@@ -66,14 +85,26 @@ def read_param(params: Dict[str, Any], name: str) -> str:
 def build_endpoint_config(args: argparse.Namespace, task_params: Dict[str, Any]) -> Dict[str, Any]:
     config: Dict[str, Any] = {}
 
-    account = args.account or read_param(task_params, "account")
-    scheduler_queue = args.scheduler_queue or read_param(task_params, "queue")
-    partition = args.partition or read_param(task_params, "partition")
-    num_nodes_raw = str(args.num_nodes) if args.num_nodes else read_param(task_params, "num_nodes")
-    cores_per_node_raw = (
-        str(args.cores_per_node) if args.cores_per_node else read_param(task_params, "cores_per_node")
+    account = _normalize_optional_str(args.account) or _normalize_optional_str(
+        read_param(task_params, "account")
     )
-    walltime = args.walltime or read_param(task_params, "walltime")
+    scheduler_queue = _normalize_optional_str(args.scheduler_queue) or _normalize_optional_str(
+        read_param(task_params, "queue")
+    )
+    partition = _normalize_optional_str(args.partition) or _normalize_optional_str(
+        read_param(task_params, "partition")
+    )
+    num_nodes_raw = _normalize_optional_str(args.num_nodes) if args.num_nodes else _normalize_optional_str(
+        read_param(task_params, "num_nodes")
+    )
+    cores_per_node_raw = (
+        _normalize_optional_str(args.cores_per_node)
+        if args.cores_per_node
+        else _normalize_optional_str(read_param(task_params, "cores_per_node"))
+    )
+    walltime = _normalize_optional_str(args.walltime) or _normalize_optional_str(
+        read_param(task_params, "walltime")
+    )
 
     if account:
         config["account"] = account
@@ -81,10 +112,12 @@ def build_endpoint_config(args: argparse.Namespace, task_params: Dict[str, Any])
         config["queue"] = scheduler_queue
     if partition:
         config["partition"] = partition
-    if num_nodes_raw:
-        config["num_nodes"] = int(num_nodes_raw)
-    if cores_per_node_raw:
-        config["cores_per_node"] = int(cores_per_node_raw)
+    num_nodes = _parse_positive_int(num_nodes_raw)
+    cores_per_node = _parse_positive_int(cores_per_node_raw)
+    if num_nodes is not None:
+        config["num_nodes"] = num_nodes
+    if cores_per_node is not None:
+        config["cores_per_node"] = cores_per_node
     if walltime:
         config["walltime"] = walltime
 
@@ -151,15 +184,21 @@ def main() -> int:
     endpoint_config = build_endpoint_config(args, task_params)
     if endpoint_config:
         logger.report_text(f"Using endpoint config: {endpoint_config}")
-    script = args.script or read_param(task_params, "script")
-    binary = args.binary or read_param(task_params, "binary") or "/bin/bash"
-    script_working_directory = args.working_directory or read_param(task_params, "working_directory")
+    script = _normalize_optional_str(args.script) or _normalize_optional_str(read_param(task_params, "script"))
+    binary = _normalize_optional_str(args.binary) or _normalize_optional_str(
+        read_param(task_params, "binary")
+    ) or "/bin/bash"
+    script_working_directory = _normalize_optional_str(args.working_directory) or _normalize_optional_str(
+        read_param(task_params, "working_directory")
+    )
     script_args = parse_script_args(args)
 
     with Executor(
         endpoint_id=endpoint_id,
         user_endpoint_config=endpoint_config or None,
     ) as executor:
+        # Avoid dill bytecode compatibility issues across local and endpoint Python versions.
+        executor.serializer = ComputeSerializer(strategy_code=AllCodeStrategies())
         if script:
             logger.report_text(
                 f"Executing script via Globus: binary={binary} script={script}"

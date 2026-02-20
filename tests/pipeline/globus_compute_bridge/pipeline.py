@@ -9,8 +9,28 @@ QUEUE = os.getenv("CLEARML_CONTROLLER_QUEUE", "crux-services")
 ENDPOINT_ID = os.getenv("GLOBUS_COMPUTE_ENDPOINT_ID", "fad4d968-8c9a-45ce-9fb4-60a9ab90be60")
 
 
+def _env_optional(name: str, default: str | None = None) -> str | None:
+    value = os.getenv(name, default)
+    if value is None:
+        return None
+    normalized = value.strip()
+    if normalized.lower() in {"", "none", "null"}:
+        return None
+    return normalized
+
+
 def main() -> None:
     launcher = GlobusComputeLauncher()
+    account = _env_optional("GLOBUS_ACCOUNT", "datascience")
+    queue_name = _env_optional("GLOBUS_QUEUE", "by-gpu")
+    partition = _env_optional("GLOBUS_PARTITION")
+    walltime = _env_optional("GLOBUS_WALLTIME", "0:10:00")
+    num_nodes = int(_env_optional("GLOBUS_NUM_NODES", "1") or "1")
+    cores_per_node = (
+        int(_env_optional("GLOBUS_CORES_PER_NODE"))
+        if _env_optional("GLOBUS_CORES_PER_NODE")
+        else None
+    )
 
     submit_task = launcher.create(
         project_name=PROJECT,
@@ -29,19 +49,21 @@ def main() -> None:
         script="./tasks/globus_script.sh",
         script_args=shlex.split(os.getenv("GLOBUS_SCRIPT_ARGS", "")),
         binary=os.getenv("GLOBUS_BINARY", "/bin/bash"),
+        account=account,
+        queue=queue_name,
+        partition=partition,
+        num_nodes=num_nodes,
+        cores_per_node=cores_per_node,
+        walltime=walltime,
         tags=["globus-bridge"],  # consumed by bridge_worker.py in bridge mode
     )
     submit_task.set_user_properties(
-        account=os.getenv("GLOBUS_ACCOUNT", "datascience"),
-        queue=os.getenv("GLOBUS_QUEUE", 'by-gpu'),
-        partition=os.getenv("GLOBUS_PARTITION"),
-        num_nodes=int(os.getenv("GLOBUS_NUM_NODES", "1")),
-        cores_per_node=(
-            int(os.getenv("GLOBUS_CORES_PER_NODE"))
-            if os.getenv("GLOBUS_CORES_PER_NODE")
-            else None
-        ),
-        walltime=os.getenv("GLOBUS_WALLTIME", "0:10:00"),
+        account=account,
+        queue=queue_name,
+        partition=partition,
+        num_nodes=num_nodes,
+        cores_per_node=cores_per_node,
+        walltime=walltime,
     )
 
     postprocess_task = Task.create(
@@ -64,7 +86,7 @@ def main() -> None:
     )
 
     pipe.add_step(
-        name="submit_on_globus",
+        name="globus_submit",
         base_task_id=submit_task.id,
         execution_queue=QUEUE,
     )
