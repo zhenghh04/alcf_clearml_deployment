@@ -4,13 +4,13 @@ from clearml import PipelineController, Task
 
 PROJECT = "amsc/pipeline-globus-bridge"
 QUEUE = os.getenv("CLEARML_CONTROLLER_QUEUE", "crux-services")
-#ENDPOINT_ID = os.getenv("GLOBUS_COMPUTE_ENDPOINT_ID", "REPLACE_WITH_ENDPOINT_ID")
-ENDPOINT_ID = "fad4d968-8c9a-45ce-9fb4-60a9ab90be60"
+ENDPOINT_ID = os.getenv("GLOBUS_COMPUTE_ENDPOINT_ID", "fad4d968-8c9a-45ce-9fb4-60a9ab90be60")
+
 
 def main() -> None:
     submit_task = Task.create(
         project_name=PROJECT,
-        task_name="globus-submit-wrapper-v2",
+        task_name="globus-submit-wrapper-v3",
         task_type=Task.TaskTypes.data_processing,
         repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
         branch="main",
