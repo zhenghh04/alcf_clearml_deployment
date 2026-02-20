@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "clearml-globus-bridge"
+version = "0.1.0"
+description = "ClearML launcher and submit wrapper for Globus Compute"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "clearml>=2.0",
+  "globus-compute-sdk>=2.21.0",
+]
+
+[project.scripts]
+clearml-globus-submit = "clearml_globus_bridge.submit_globus_job:main"
+
+[tool.setuptools.packages.find]
+include = ["clearml_globus_bridge*"]
