@@ -22,6 +22,7 @@ class GlobusComputeLauncher:
         launcher_script: str = "./tasks/submit_globus_job.py",
         launcher_binary: str = "python",
         launcher_working_directory: Optional[str] = None,
+        script_working_directory: Optional[str] = None,
         input_value: int = 7,
         poll_interval: int = 5,
         timeout_sec: int = 900,
@@ -70,8 +71,8 @@ class GlobusComputeLauncher:
         if script:
             argparse_args.append(("script", script))
             argparse_args.append(("binary", binary))
-            if working_directory:
-                argparse_args.append(("working-directory", working_directory))
+            if script_working_directory:
+                argparse_args.append(("working-directory", script_working_directory))
             if script_args:
                 argparse_args.append(("script-args-json", json.dumps(list(script_args))))
 

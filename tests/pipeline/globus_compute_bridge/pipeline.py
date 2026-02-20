@@ -7,6 +7,7 @@ from globus_compute_launcher import GlobusComputeLauncher
 PROJECT = "amsc/pipeline-globus-bridge"
 QUEUE = os.getenv("CLEARML_CONTROLLER_QUEUE", "crux-services")
 ENDPOINT_ID = os.getenv("GLOBUS_COMPUTE_ENDPOINT_ID", "fad4d968-8c9a-45ce-9fb4-60a9ab90be60")
+LOCAL_WRAPPER_WORKDIR = "./tests/pipeline/globus_compute_bridge"
 
 
 def _env_optional(name: str, default: str | None = None) -> str | None:
@@ -37,16 +38,15 @@ def main() -> None:
         task_name="globus-submit-wrapper-v5",
         repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
         branch="main",
-        working_directory=os.getenv(
-            "GLOBUS_WORKING_DIRECTORY", "./tests/pipeline/globus_compute_bridge"
-        ),
+        working_directory=LOCAL_WRAPPER_WORKDIR,
         task_type=Task.TaskTypes.data_processing,
-        launcher_working_directory="./tests/pipeline/globus_compute_bridge",
+        launcher_working_directory=LOCAL_WRAPPER_WORKDIR,
+        script_working_directory=_env_optional("GLOBUS_SCRIPT_WORKING_DIRECTORY"),
         endpoint_id=ENDPOINT_ID,
         input_value=7,
         poll_interval=5,
         timeout_sec=900,
-        script="./tasks/globus_script.sh",
+        script=os.getenv("GLOBUS_SCRIPT", "./tasks/globus_script.sh"),
         script_args=shlex.split(os.getenv("GLOBUS_SCRIPT_ARGS", "")),
         binary=os.getenv("GLOBUS_BINARY", "/bin/bash"),
         account=account,
