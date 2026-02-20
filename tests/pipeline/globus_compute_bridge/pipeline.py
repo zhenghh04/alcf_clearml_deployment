@@ -10,7 +10,7 @@ ENDPOINT_ID = "fad4d968-8c9a-45ce-9fb4-60a9ab90be60"
 def main() -> None:
     submit_task = Task.create(
         project_name=PROJECT,
-        task_name="globus-submit-wrapper-v1",
+        task_name="globus-submit-wrapper-v2",
         task_type=Task.TaskTypes.data_processing,
         repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
         branch="main",
@@ -24,13 +24,19 @@ def main() -> None:
             ("--timeout-sec", "900"),
         ],
     )
+    submit_task.set_parameters_as_dict(
+        {
+            "Args/endpoint-id": ENDPOINT_ID,
+            "env:GLOBUS_COMPUTE_ENDPOINT_ID": ENDPOINT_ID,
+        }
+    )
 
     # Tag used by bridge_worker.py in bridge mode (optional).
     submit_task.set_tags(["globus-bridge"])  # no-op for direct wrapper mode
 
     postprocess_task = Task.create(
         project_name=PROJECT,
-        task_name="globus-postprocess-v1",
+        task_name="globus-postprocess-v2",
         task_type=Task.TaskTypes.testing,
         repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
         branch="main",
