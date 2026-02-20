@@ -12,7 +12,10 @@ from globus_compute_sdk import Executor
 from itsdangerous import URLSafeSerializer
 from pydantic import BaseModel, Field
 
-from token_store import TokenStore
+try:
+    from .token_store import TokenStore
+except ImportError:  # Allows running as a script from this directory.
+    from token_store import TokenStore
 
 
 @dataclass
