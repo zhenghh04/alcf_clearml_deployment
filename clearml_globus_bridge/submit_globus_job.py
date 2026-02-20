@@ -142,6 +142,10 @@ def run_script(
     binary: str,
     working_directory: Optional[str],
 ) -> Dict[str, Any]:
+    # Keep imports inside the remotely executed function to avoid missing globals
+    # when deserialized on endpoint workers with different Python environments.
+    import subprocess
+
     cmd = [binary, script_path] + script_args
     completed = subprocess.run(
         cmd,
