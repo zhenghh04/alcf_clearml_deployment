@@ -185,3 +185,14 @@ pipe.add_step(
 ```
 
 Both training steps share the same parent and therefore run concurrently once `prepare_data` finishes. The `ensemble_evaluate` step lists both training steps as parents, so it waits until both are complete.
+
+## Globus Compute bridge patterns
+Use ClearML for orchestration and Globus Compute for execution with either:
+
+- `Pattern A (wrapper step)`: ClearML task submits/polls Globus job and reports metrics/artifacts to ClearML.
+- `Pattern B (bridge worker service)`: long-lived service consumes queued tasks, submits to Globus, and updates task state in ClearML.
+
+Files:
+- `tests/pipeline/globus_compute_bridge/pipeline.py`
+- `tests/pipeline/globus_compute_bridge/bridge_worker.py`
+- `tests/pipeline/globus_compute_bridge/README.md`
