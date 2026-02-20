@@ -47,6 +47,41 @@ set -a; source server/globus_connector/.env; set +a
 uvicorn server.globus_connector.main:app --host 0.0.0.0 --port 8000
 ```
 
+Or use the launcher:
+
+```bash
+server/globus_connector/launch_connector.sh
+```
+
+Useful options:
+
+```bash
+INSTALL_DEPS=1 PORT=8503 server/globus_connector/launch_connector.sh
+DETACH=1 LOG_FILE=server/globus_connector/connector.log server/globus_connector/launch_connector.sh
+```
+
+## 3b) Run as a systemd service
+
+Install as a user service (no sudo):
+
+```bash
+server/globus_connector/install_systemd_service.sh
+```
+
+Install as a system service:
+
+```bash
+server/globus_connector/install_systemd_service.sh --system
+```
+
+Service control:
+
+```bash
+systemctl --user status globus-connector.service
+systemctl --user restart globus-connector.service
+journalctl --user -u globus-connector.service -f
+```
+
 ## 4) Bootstrap user token
 
 Use your ClearML user id and email (from ClearML profile/API).
