@@ -2,6 +2,12 @@
 
 This service implements delegated Globus Compute submission on behalf of a ClearML user.
 
+Access control guidance:
+- `server/globus_connector/ACCESS_PERMISSION_CONTROL.md`
+
+Globus auth setup guide:
+- `server/globus_connector/ENABLE_GLOBUS_AUTH.md`
+
 ## Endpoints
 
 - `GET /login?clearml_user_id=<id>&email=<email>`

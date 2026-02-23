@@ -49,12 +49,6 @@ def main() -> None:
         script=os.getenv("GLOBUS_SCRIPT", "/home/hzheng/clearml/alcf_clearml_evaluation/tests/pipeline/globus_compute_bridge/tasks/globus_script.sh"),
         script_args=shlex.split(os.getenv("GLOBUS_SCRIPT_ARGS", "")),
         binary=os.getenv("GLOBUS_BINARY", "/bin/bash"),
-        account=account,
-        queue=queue_name,
-        partition=partition,
-        num_nodes=num_nodes,
-        cores_per_node=cores_per_node,
-        walltime=walltime,
         tags=["globus-bridge"],  # consumed by bridge_worker.py in bridge mode
     )
     submit_task.set_user_properties(
