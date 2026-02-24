@@ -7,7 +7,7 @@ from globus_compute_launcher import GlobusComputeLauncher
 
 PROJECT = "amsc/pipeline-globus-bridge"
 QUEUE = os.getenv("CLEARML_CONTROLLER_QUEUE", "crux-services")
-ENDPOINT_ID = os.getenv("GLOBUS_COMPUTE_ENDPOINT_ID", "")
+ENDPOINT_ID = os.getenv("GLOBUS_COMPUTE_ENDPOINT_ID", "56fcc306-ca2d-4c3d-8cc5-105f4b5dfe89")
 LOCAL_WRAPPER_WORKDIR = "./tests/pipeline/globus_compute_bridge"
 
 
