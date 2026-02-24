@@ -63,8 +63,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--filesystems", default="flare:home")
     parser.add_argument(
         "--overwrite",
+        dest="overwrite",
         action="store_true",
-        help="Overwrite existing files. If omitted, existing files are kept.",
+        default=True,
+        help="Overwrite existing files (default: enabled).",
+    )
+    parser.add_argument(
+        "--no-overwrite",
+        dest="overwrite",
+        action="store_false",
+        help="Do not overwrite existing files.",
     )
     parser.add_argument(
         "--backup",
@@ -75,6 +83,13 @@ def parse_args() -> argparse.Namespace:
         "--skip-endpoint-configure",
         action="store_true",
         help="Skip running 'globus-compute-endpoint configure <endpoint-name>'.",
+    )
+    parser.add_argument(
+        "--skip-login",
+        dest="login_first",
+        action="store_false",
+        default=True,
+        help="Skip running 'globus-compute-endpoint login' first.",
     )
     return parser.parse_args()
 
@@ -125,6 +140,11 @@ def configure_endpoint(base_dir: Path, endpoint_name: str, skip: bool) -> str:
 
 def main() -> int:
     args = parse_args()
+    login_result = "skip endpoint login (requested)"
+    if args.login_first:
+        subprocess.run(["globus-compute-endpoint", "login"], check=True)
+        login_result = "run globus-compute-endpoint login"
+
     base_dir = Path(args.base_dir).expanduser()
     endpoint_dir = base_dir / args.endpoint_name
     configure_result = configure_endpoint(
@@ -156,6 +176,7 @@ def main() -> int:
     )
 
     results = [
+        login_result,
         configure_result,
         write_if_allowed(
             config_path,

@@ -11,15 +11,6 @@ LOCAL_WRAPPER_WORKDIR = "./tests/pipeline/globus_compute_bridge"
 
 # Scheduler/resource settings are intentionally configured in-code
 # (not via environment variables) to keep runs reproducible.
-SCHEDULER_SETTINGS = {
-    "account": "datascience",
-    "queue": "debug",
-    "partition": None,
-    "num_nodes": 1,
-    "cores_per_node": None,
-    "walltime": "0:10:00",
-}
-
 def _env_optional(name: str, default: str | None = None) -> str | None:
     value = os.getenv(name, default)
     if value is None:
@@ -35,12 +26,6 @@ def main() -> None:
         raise ValueError("GLOBUS_COMPUTE_ENDPOINT_ID must be set to a valid endpoint UUID.")
 
     launcher = GlobusComputeLauncher()
-    account = SCHEDULER_SETTINGS["account"]
-    queue_name = SCHEDULER_SETTINGS["queue"]
-    partition = SCHEDULER_SETTINGS["partition"]
-    walltime = SCHEDULER_SETTINGS["walltime"]
-    num_nodes = SCHEDULER_SETTINGS["num_nodes"]
-    cores_per_node = SCHEDULER_SETTINGS["cores_per_node"]
 
     submit_task = launcher.create(
         project_name=PROJECT,
@@ -59,12 +44,12 @@ def main() -> None:
         tags=["globus-bridge"],  # consumed by bridge_worker.py in bridge mode
     )
     user_props = {
-        "account": account,
-        "queue": queue_name,
-        "partition": partition,
-        "num_nodes": num_nodes,
-        "cores_per_node": cores_per_node,
-        "walltime": walltime,
+        "account": "datascience",
+        "queue": "workq",
+        "num_nodes": 1,
+        "cores_per_node": 64,
+        "walltime": "00:10:00",
+        "filesystems": "eagle:home",
     }
 
     submit_task.set_user_properties(
