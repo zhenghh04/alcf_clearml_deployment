@@ -7,8 +7,7 @@ from globus_compute_launcher import GlobusComputeLauncher
 
 PROJECT = "amsc/pipeline-globus-bridge"
 QUEUE = os.getenv("CLEARML_CONTROLLER_QUEUE", "crux-services")
-#ENDPOINT_ID = os.getenv("GLOBUS_COMPUTE_ENDPOINT_ID", "fad4d968-8c9a-45ce-9fb4-60a9ab90be60")
-ENDPOINT_ID= "56fcc306-ca2d-4c3d-8cc5-105f4b5dfe89"
+ENDPOINT_ID = os.getenv("GLOBUS_COMPUTE_ENDPOINT_ID", "")
 LOCAL_WRAPPER_WORKDIR = "./tests/pipeline/globus_compute_bridge"
 
 
@@ -33,6 +32,9 @@ def _env_json(name: str) -> dict | None:
 
 
 def main() -> None:
+    if not ENDPOINT_ID.strip():
+        raise ValueError("GLOBUS_COMPUTE_ENDPOINT_ID must be set to a valid endpoint UUID.")
+
     launcher = GlobusComputeLauncher()
     account = _env_optional("GLOBUS_ACCOUNT", "datascience")
     queue_name = _env_optional("GLOBUS_QUEUE", "debug")

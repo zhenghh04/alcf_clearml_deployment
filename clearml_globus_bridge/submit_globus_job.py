@@ -10,9 +10,6 @@ from clearml import Task
 from globus_compute_sdk import Executor
 from globus_compute_sdk.serialize import AllCodeStrategies, ComputeSerializer
 
-DEFAULT_ENDPOINT_ID = "fad4d968-8c9a-45ce-9fb4-60a9ab90be60"
-
-
 def _normalize_optional_str(value: Any) -> str:
     if value is None:
         return ""
@@ -42,7 +39,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--endpoint-id",
-        default=os.getenv("GLOBUS_COMPUTE_ENDPOINT_ID", DEFAULT_ENDPOINT_ID),
+        default=os.getenv("GLOBUS_COMPUTE_ENDPOINT_ID", ""),
     )
     parser.add_argument("--input-value", type=int, default=7)
     parser.add_argument("--poll-interval", type=int, default=5)
