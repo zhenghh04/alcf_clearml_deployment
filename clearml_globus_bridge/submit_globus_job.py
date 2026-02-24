@@ -60,6 +60,23 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--repo-branch", default="")
     parser.add_argument("--repo-working-directory", default="")
     parser.add_argument("--clone-repo", default="")
+    parser.add_argument(
+        "--submit-retries",
+        type=int,
+        default=int(os.getenv("GLOBUS_SUBMIT_RETRIES", "2")),
+        help="Retry count for transient submission failures (default: 2).",
+    )
+    parser.add_argument(
+        "--retry-backoff-sec",
+        type=int,
+        default=int(os.getenv("GLOBUS_RETRY_BACKOFF_SEC", "5")),
+        help="Base backoff in seconds between submit retries (default: 5).",
+    )
+    parser.add_argument(
+        "--required-endpoint-keys",
+        default=os.getenv("GLOBUS_REQUIRED_ENDPOINT_KEYS", ""),
+        help="Comma-separated required keys in endpoint config (example: filesystems).",
+    )
     return parser.parse_args()
 
 
@@ -235,6 +252,45 @@ def preview_text(text: str, max_lines: int = 20) -> str:
     return f"{head}\n... ({len(lines) - max_lines} more lines)"
 
 
+def parse_required_keys(raw: str) -> List[str]:
+    if not raw:
+        return []
+    return [k.strip() for k in raw.split(",") if k.strip()]
+
+
+def validate_endpoint_config(config: Dict[str, Any], required_keys: List[str]) -> None:
+    if not required_keys:
+        return
+    missing = [k for k in required_keys if k not in config or config.get(k) in (None, "")]
+    if missing:
+        raise ValueError(
+            "Missing required endpoint config keys: "
+            f"{missing}. Current config: {config}"
+        )
+
+
+def is_retryable_submission_error(exc: Exception) -> bool:
+    msg = str(exc).lower()
+    retry_tokens = [
+        "endpoint_not_online",
+        "disconnected",
+        "connection closed",
+        "temporarily unavailable",
+        "timed out",
+        "timeout",
+    ]
+    non_retry_tokens = [
+        "access_refused",
+        "invalid credentials",
+        "authentication",
+        "resource: filesystems is required",
+        "resource_conflict",
+    ]
+    if any(t in msg for t in non_retry_tokens):
+        return False
+    return any(t in msg for t in retry_tokens)
+
+
 def run_script(
     script_path: str,
     script_args: List[str],
@@ -358,48 +414,64 @@ def main() -> int:
     clone_repo = parse_bool(args.clone_repo or read_param(task_params, "clone_repo"), default=False)
     script_args = parse_script_args(args)
 
-    with Executor(
-        endpoint_id=endpoint_id,
-        user_endpoint_config=endpoint_config or None,
-    ) as executor:
-        # Avoid dill bytecode compatibility issues across local and endpoint Python versions.
-        executor.serializer = ComputeSerializer(strategy_code=AllCodeStrategies())
-        if script:
-            logger.report_text(
-                f"Executing script via Globus: binary={binary} script={script}"
-            )
-            if clone_repo:
-                logger.report_text(
-                    f"clone_repo enabled: repo={repo_url} branch={repo_branch or 'default'} "
-                    f"repo_working_directory={repo_working_directory or '.'}"
-                )
-            future = executor.submit(
-                run_script,
-                script,
-                script_args,
-                binary,
-                script_working_directory or None,
-                repo_url or None,
-                repo_branch or None,
-                repo_working_directory or None,
-                clone_repo,
-            )
-        else:
-            logger.report_text(f"Executing default multiply payload={args.input_value}")
-            # Use stdlib callable to avoid Python minor-version bytecode mismatch issues.
-            future = executor.submit(operator.mul, args.input_value, args.input_value)
-        while not future.done():
-            elapsed = time.time() - start
-            logger.report_scalar(
-                "globus_bridge", "wait_time_sec", value=elapsed, iteration=int(elapsed)
-            )
-            if elapsed > args.timeout_sec:
-                raise TimeoutError(
-                    f"Timed out waiting for Globus task after {args.timeout_sec}s"
-                )
-            time.sleep(args.poll_interval)
+    required_keys = parse_required_keys(args.required_endpoint_keys)
+    validate_endpoint_config(endpoint_config, required_keys)
 
-        output_value = future.result()
+    output_value: Any = None
+    max_attempts = max(1, args.submit_retries + 1)
+    for attempt in range(1, max_attempts + 1):
+        try:
+            with Executor(
+                endpoint_id=endpoint_id,
+                user_endpoint_config=endpoint_config or None,
+            ) as executor:
+                # Avoid dill bytecode compatibility issues across local and endpoint Python versions.
+                executor.serializer = ComputeSerializer(strategy_code=AllCodeStrategies())
+                if script:
+                    logger.report_text(
+                        f"Executing script via Globus: binary={binary} script={script}"
+                    )
+                    if clone_repo:
+                        logger.report_text(
+                            f"clone_repo enabled: repo={repo_url} branch={repo_branch or 'default'} "
+                            f"repo_working_directory={repo_working_directory or '.'}"
+                        )
+                    future = executor.submit(
+                        run_script,
+                        script,
+                        script_args,
+                        binary,
+                        script_working_directory or None,
+                        repo_url or None,
+                        repo_branch or None,
+                        repo_working_directory or None,
+                        clone_repo,
+                    )
+                else:
+                    logger.report_text(f"Executing default multiply payload={args.input_value}")
+                    # Use stdlib callable to avoid Python minor-version bytecode mismatch issues.
+                    future = executor.submit(operator.mul, args.input_value, args.input_value)
+                while not future.done():
+                    elapsed = time.time() - start
+                    logger.report_scalar(
+                        "globus_bridge", "wait_time_sec", value=elapsed, iteration=int(elapsed)
+                    )
+                    if elapsed > args.timeout_sec:
+                        raise TimeoutError(
+                            f"Timed out waiting for Globus task after {args.timeout_sec}s"
+                        )
+                    time.sleep(args.poll_interval)
+                output_value = future.result()
+            break
+        except Exception as exc:
+            if attempt >= max_attempts or not is_retryable_submission_error(exc):
+                raise
+            sleep_sec = args.retry_backoff_sec * attempt
+            logger.report_text(
+                f"Submission attempt {attempt}/{max_attempts} failed with retryable error: {exc}\n"
+                f"Retrying in {sleep_sec}s..."
+            )
+            time.sleep(sleep_sec)
 
     if script:
         result = {

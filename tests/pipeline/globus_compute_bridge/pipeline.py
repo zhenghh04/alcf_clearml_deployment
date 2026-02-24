@@ -29,7 +29,7 @@ def main() -> None:
 
     submit_task = launcher.create(
         project_name=PROJECT,
-        task_name="globus-submit-wrapper-v7",
+        task_name="globus-submit-wrapper-v8",
         repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
         branch="main",
         working_directory=LOCAL_WRAPPER_WORKDIR,
