@@ -92,28 +92,62 @@ def read_param(params: Dict[str, Any], name: str) -> str:
     return ""
 
 
-def build_endpoint_config(args: argparse.Namespace, task_params: Dict[str, Any]) -> Dict[str, Any]:
+def read_user_property(user_properties: Dict[str, Any], name: str) -> str:
+    candidates = [
+        name,
+        name.replace("_", "-"),
+        name.replace("-", "_"),
+    ]
+    for candidate in candidates:
+        value = user_properties.get(candidate)
+        normalized = _normalize_optional_str(value)
+        if normalized:
+            return normalized
+    return ""
+
+
+def build_endpoint_config(
+    args: argparse.Namespace,
+    task_params: Dict[str, Any],
+    task_user_properties: Dict[str, Any],
+) -> Dict[str, Any]:
     config: Dict[str, Any] = {}
 
-    account = _normalize_optional_str(args.account) or _normalize_optional_str(
-        read_param(task_params, "account")
+    account = (
+        _normalize_optional_str(args.account)
+        or read_user_property(task_user_properties, "account")
+        or _normalize_optional_str(read_param(task_params, "account"))
     )
-    scheduler_queue = _normalize_optional_str(args.scheduler_queue) or _normalize_optional_str(
-        read_param(task_params, "queue")
+    scheduler_queue = (
+        _normalize_optional_str(args.scheduler_queue)
+        or read_user_property(task_user_properties, "queue")
+        or _normalize_optional_str(read_param(task_params, "queue"))
     )
-    partition = _normalize_optional_str(args.partition) or _normalize_optional_str(
-        read_param(task_params, "partition")
+    partition = (
+        _normalize_optional_str(args.partition)
+        or read_user_property(task_user_properties, "partition")
+        or _normalize_optional_str(read_param(task_params, "partition"))
     )
-    num_nodes_raw = _normalize_optional_str(args.num_nodes) if args.num_nodes else _normalize_optional_str(
-        read_param(task_params, "num_nodes")
+    num_nodes_raw = (
+        _normalize_optional_str(args.num_nodes)
+        if args.num_nodes
+        else (
+            read_user_property(task_user_properties, "num_nodes")
+            or _normalize_optional_str(read_param(task_params, "num_nodes"))
+        )
     )
     cores_per_node_raw = (
         _normalize_optional_str(args.cores_per_node)
         if args.cores_per_node
-        else _normalize_optional_str(read_param(task_params, "cores_per_node"))
+        else (
+            read_user_property(task_user_properties, "cores_per_node")
+            or _normalize_optional_str(read_param(task_params, "cores_per_node"))
+        )
     )
-    walltime = _normalize_optional_str(args.walltime) or _normalize_optional_str(
-        read_param(task_params, "walltime")
+    walltime = (
+        _normalize_optional_str(args.walltime)
+        or read_user_property(task_user_properties, "walltime")
+        or _normalize_optional_str(read_param(task_params, "walltime"))
     )
 
     if account:
@@ -131,8 +165,13 @@ def build_endpoint_config(args: argparse.Namespace, task_params: Dict[str, Any])
     if walltime:
         config["walltime"] = walltime
 
-    if args.endpoint_config_json:
-        config.update(json.loads(args.endpoint_config_json))
+    endpoint_config_json = (
+        _normalize_optional_str(args.endpoint_config_json)
+        or read_user_property(task_user_properties, "endpoint_config_json")
+        or _normalize_optional_str(read_param(task_params, "endpoint_config_json"))
+    )
+    if endpoint_config_json:
+        config.update(json.loads(endpoint_config_json))
 
     return config
 
@@ -248,6 +287,7 @@ def main() -> int:
     logger = task.get_logger()
 
     task_params = task.get_parameters_as_dict(cast=True)
+    task_user_properties = task.get_user_properties(value_only=True)
     endpoint_id = args.endpoint_id or read_param(task_params, "endpoint_id")
     if not endpoint_id:
         logger.report_text(f"Parameter keys visible to task: {sorted(flatten_params(task_params).keys())}")
@@ -258,7 +298,7 @@ def main() -> int:
     start = time.time()
     logger.report_text(f"Submitting work to Globus endpoint {endpoint_id}")
 
-    endpoint_config = build_endpoint_config(args, task_params)
+    endpoint_config = build_endpoint_config(args, task_params, task_user_properties)
     if endpoint_config:
         logger.report_text(f"Using endpoint config: {endpoint_config}")
     script = _normalize_optional_str(args.script) or _normalize_optional_str(read_param(task_params, "script"))
