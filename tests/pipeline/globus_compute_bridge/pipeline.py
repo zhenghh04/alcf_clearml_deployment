@@ -7,7 +7,7 @@ from globus_compute_launcher import GlobusComputeLauncher
 
 PROJECT = "amsc/pipeline-globus-bridge"
 QUEUE = os.getenv("CLEARML_CONTROLLER_QUEUE", "crux-services")
-ENDPOINT_ID = os.getenv("GLOBUS_COMPUTE_ENDPOINT_ID", "56fcc306-ca2d-4c3d-8cc5-105f4b5dfe89")
+ENDPOINT_ID = os.getenv("GLOBUS_COMPUTE_ENDPOINT_ID", "0af19c44-09d8-4f72-9d5a-3bbff1728c6b")
 LOCAL_WRAPPER_WORKDIR = "./tests/pipeline/globus_compute_bridge"
 
 
@@ -53,7 +53,7 @@ def main() -> None:
 
     submit_task = launcher.create(
         project_name=PROJECT,
-        task_name="globus-submit-wrapper-v6",
+        task_name="globus-submit-wrapper-v7",
         repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
         branch="main",
         working_directory=LOCAL_WRAPPER_WORKDIR,
