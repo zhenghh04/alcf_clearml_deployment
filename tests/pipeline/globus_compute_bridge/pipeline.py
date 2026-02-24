@@ -1,15 +1,24 @@
-import json
 import os
 import shlex
 
 from clearml import PipelineController, Task
-from globus_compute_launcher import GlobusComputeLauncher
+from clearml_globus_bridge.globus_compute_launcher import GlobusComputeLauncher
 
 PROJECT = "amsc/pipeline-globus-bridge"
 QUEUE = os.getenv("CLEARML_CONTROLLER_QUEUE", "crux-services")
 ENDPOINT_ID = os.getenv("GLOBUS_COMPUTE_ENDPOINT_ID", "0af19c44-09d8-4f72-9d5a-3bbff1728c6b")
 LOCAL_WRAPPER_WORKDIR = "./tests/pipeline/globus_compute_bridge"
 
+# Scheduler/resource settings are intentionally configured in-code
+# (not via environment variables) to keep runs reproducible.
+SCHEDULER_SETTINGS = {
+    "account": "datascience",
+    "queue": "debug",
+    "partition": None,
+    "num_nodes": 1,
+    "cores_per_node": None,
+    "walltime": "0:10:00",
+}
 
 def _env_optional(name: str, default: str | None = None) -> str | None:
     value = os.getenv(name, default)
@@ -21,35 +30,17 @@ def _env_optional(name: str, default: str | None = None) -> str | None:
     return normalized
 
 
-def _env_json(name: str) -> dict | None:
-    raw = _env_optional(name)
-    if not raw:
-        return None
-    parsed = json.loads(raw)
-    if not isinstance(parsed, dict):
-        raise ValueError(f"{name} must be a JSON object")
-    return parsed
-
-
 def main() -> None:
     if not ENDPOINT_ID.strip():
         raise ValueError("GLOBUS_COMPUTE_ENDPOINT_ID must be set to a valid endpoint UUID.")
 
     launcher = GlobusComputeLauncher()
-    account = _env_optional("GLOBUS_ACCOUNT", "datascience")
-    queue_name = _env_optional("GLOBUS_QUEUE", "debug")
-    partition = _env_optional("GLOBUS_PARTITION")
-    walltime = _env_optional("GLOBUS_WALLTIME", "0:10:00")
-    num_nodes = int(_env_optional("GLOBUS_NUM_NODES", "1") or "1")
-    cores_per_node = (
-        int(_env_optional("GLOBUS_CORES_PER_NODE"))
-        if _env_optional("GLOBUS_CORES_PER_NODE")
-        else None
-    )
-    endpoint_config = _env_json("GLOBUS_ENDPOINT_CONFIG_JSON")
-    endpoint_config_json = (
-        json.dumps(endpoint_config, separators=(",", ":")) if endpoint_config else None
-    )
+    account = SCHEDULER_SETTINGS["account"]
+    queue_name = SCHEDULER_SETTINGS["queue"]
+    partition = SCHEDULER_SETTINGS["partition"]
+    walltime = SCHEDULER_SETTINGS["walltime"]
+    num_nodes = SCHEDULER_SETTINGS["num_nodes"]
+    cores_per_node = SCHEDULER_SETTINGS["cores_per_node"]
 
     submit_task = launcher.create(
         project_name=PROJECT,
@@ -58,13 +49,13 @@ def main() -> None:
         branch="main",
         working_directory=LOCAL_WRAPPER_WORKDIR,
         task_type=Task.TaskTypes.data_processing,
-        launcher_working_directory=LOCAL_WRAPPER_WORKDIR,
+        # Run launcher task from repo root so module mode + `packages=["-e ."]` works.
+        launcher_working_directory=".",
         script_working_directory=_env_optional("GLOBUS_SCRIPT_WORKING_DIRECTORY"),
         endpoint_id=ENDPOINT_ID,
         script=os.getenv("GLOBUS_SCRIPT", "/home/hzheng/clearml/alcf_clearml_evaluation/tests/pipeline/globus_compute_bridge/tasks/globus_script.sh"),
         script_args=shlex.split(os.getenv("GLOBUS_SCRIPT_ARGS", "")),
         binary=os.getenv("GLOBUS_BINARY", "/bin/bash"),
-        endpoint_config=endpoint_config,
         tags=["globus-bridge"],  # consumed by bridge_worker.py in bridge mode
     )
     user_props = {
@@ -75,8 +66,6 @@ def main() -> None:
         "cores_per_node": cores_per_node,
         "walltime": walltime,
     }
-    if endpoint_config_json:
-        user_props["endpoint_config_json"] = endpoint_config_json
 
     submit_task.set_user_properties(
         **user_props,

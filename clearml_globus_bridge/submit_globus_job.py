@@ -10,7 +10,7 @@ from clearml import Task
 from globus_compute_sdk import Executor
 from globus_compute_sdk.serialize import AllCodeStrategies, ComputeSerializer
 
-def _normalize_optional_str(value: Any) -> str:
+def clean_str(value: Any) -> str:
     if value is None:
         return ""
     normalized = str(value).strip()
@@ -19,7 +19,7 @@ def _normalize_optional_str(value: Any) -> str:
     return normalized
 
 
-def _parse_positive_int(value: str) -> Optional[int]:
+def parse_positive_int(value: str) -> Optional[int]:
     if not value:
         return None
     parsed = int(value)
@@ -28,8 +28,8 @@ def _parse_positive_int(value: str) -> Optional[int]:
     return parsed
 
 
-def _parse_bool(value: Any, default: bool = False) -> bool:
-    normalized = _normalize_optional_str(value).lower()
+def parse_bool(value: Any, default: bool = False) -> bool:
+    normalized = clean_str(value).lower()
     if not normalized:
         return default
     return normalized in {"1", "true", "yes", "y", "on"}
@@ -60,11 +60,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--repo-branch", default="")
     parser.add_argument("--repo-working-directory", default="")
     parser.add_argument("--clone-repo", default="")
-    parser.add_argument(
-        "--require-compute-node",
-        default=os.getenv("GLOBUS_REQUIRE_COMPUTE_NODE", "1"),
-        help="Fail if script appears to run on login/UAN host (default: 1).",
-    )
     return parser.parse_args()
 
 
@@ -94,28 +89,87 @@ def read_param(params: Dict[str, Any], name: str) -> str:
     return ""
 
 
-def build_endpoint_config(args: argparse.Namespace, task_params: Dict[str, Any]) -> Dict[str, Any]:
+def read_user_property(user_properties: Dict[str, Any], name: str) -> str:
+    candidates = [
+        name,
+        name.replace("_", "-"),
+        name.replace("-", "_"),
+    ]
+    for candidate in candidates:
+        value = user_properties.get(candidate)
+        normalized = clean_str(value)
+        if normalized:
+            return normalized
+    return ""
+
+
+def coerce_user_property_value(value: Any) -> Any:
+    normalized = clean_str(value)
+    if not normalized:
+        return ""
+    lowered = normalized.lower()
+    if lowered in {"true", "false"}:
+        return lowered == "true"
+    if lowered in {"null", "none"}:
+        return ""
+    if normalized.startswith("{") or normalized.startswith("["):
+        try:
+            return json.loads(normalized)
+        except Exception:
+            pass
+    try:
+        return int(normalized)
+    except Exception:
+        pass
+    try:
+        return float(normalized)
+    except Exception:
+        pass
+    return normalized
+
+
+def build_endpoint_config(
+    args: argparse.Namespace,
+    task_params: Dict[str, Any],
+    task_user_properties: Dict[str, Any],
+) -> Dict[str, Any]:
     config: Dict[str, Any] = {}
 
-    account = _normalize_optional_str(args.account) or _normalize_optional_str(
-        read_param(task_params, "account")
+    account = (
+        clean_str(args.account)
+        or read_user_property(task_user_properties, "account")
+        or clean_str(read_param(task_params, "account"))
     )
-    scheduler_queue = _normalize_optional_str(args.scheduler_queue) or _normalize_optional_str(
-        read_param(task_params, "queue")
+    scheduler_queue = (
+        clean_str(args.scheduler_queue)
+        or read_user_property(task_user_properties, "queue")
+        or clean_str(read_param(task_params, "queue"))
     )
-    partition = _normalize_optional_str(args.partition) or _normalize_optional_str(
-        read_param(task_params, "partition")
+    partition = (
+        clean_str(args.partition)
+        or read_user_property(task_user_properties, "partition")
+        or clean_str(read_param(task_params, "partition"))
     )
-    num_nodes_raw = _normalize_optional_str(args.num_nodes) if args.num_nodes else _normalize_optional_str(
-        read_param(task_params, "num_nodes")
+    num_nodes_raw = (
+        clean_str(args.num_nodes)
+        if args.num_nodes
+        else (
+            read_user_property(task_user_properties, "num_nodes")
+            or clean_str(read_param(task_params, "num_nodes"))
+        )
     )
     cores_per_node_raw = (
-        _normalize_optional_str(args.cores_per_node)
+        clean_str(args.cores_per_node)
         if args.cores_per_node
-        else _normalize_optional_str(read_param(task_params, "cores_per_node"))
+        else (
+            read_user_property(task_user_properties, "cores_per_node")
+            or clean_str(read_param(task_params, "cores_per_node"))
+        )
     )
-    walltime = _normalize_optional_str(args.walltime) or _normalize_optional_str(
-        read_param(task_params, "walltime")
+    walltime = (
+        clean_str(args.walltime)
+        or read_user_property(task_user_properties, "walltime")
+        or clean_str(read_param(task_params, "walltime"))
     )
 
     if account:
@@ -124,8 +178,8 @@ def build_endpoint_config(args: argparse.Namespace, task_params: Dict[str, Any])
         config["queue"] = scheduler_queue
     if partition:
         config["partition"] = partition
-    num_nodes = _parse_positive_int(num_nodes_raw)
-    cores_per_node = _parse_positive_int(cores_per_node_raw)
+    num_nodes = parse_positive_int(num_nodes_raw)
+    cores_per_node = parse_positive_int(cores_per_node_raw)
     if num_nodes is not None:
         config["num_nodes"] = num_nodes
     if cores_per_node is not None:
@@ -133,8 +187,31 @@ def build_endpoint_config(args: argparse.Namespace, task_params: Dict[str, Any])
     if walltime:
         config["walltime"] = walltime
 
-    if args.endpoint_config_json:
-        config.update(json.loads(args.endpoint_config_json))
+    endpoint_config_json = (
+        clean_str(args.endpoint_config_json)
+        or read_user_property(task_user_properties, "endpoint_config_json")
+        or clean_str(read_param(task_params, "endpoint_config_json"))
+    )
+    if endpoint_config_json:
+        config.update(json.loads(endpoint_config_json))
+
+    reserved_keys = {
+        "account",
+        "queue",
+        "partition",
+        "num_nodes",
+        "cores_per_node",
+        "walltime",
+        "endpoint_config_json",
+    }
+    for key, raw_value in task_user_properties.items():
+        canonical_key = str(key).strip().replace("-", "_")
+        if not canonical_key or canonical_key in reserved_keys:
+            continue
+        parsed_value = coerce_user_property_value(raw_value)
+        if parsed_value == "":
+            continue
+        config[canonical_key] = parsed_value
 
     return config
 
@@ -148,7 +225,7 @@ def parse_script_args(args: argparse.Namespace) -> List[str]:
     return [str(item) for item in parsed]
 
 
-def _preview(text: str, max_lines: int = 20) -> str:
+def preview_text(text: str, max_lines: int = 20) -> str:
     if not text:
         return ""
     lines = text.splitlines()
@@ -156,20 +233,6 @@ def _preview(text: str, max_lines: int = 20) -> str:
         return text
     head = "\n".join(lines[:max_lines])
     return f"{head}\n... ({len(lines) - max_lines} more lines)"
-
-
-def _extract_hostname_from_stdout(text: str) -> str:
-    for line in text.splitlines():
-        if line.lower().startswith("hostname:"):
-            return line.split(":", 1)[1].strip()
-    return ""
-
-
-def _looks_like_login_host(hostname: str) -> bool:
-    normalized = hostname.strip().lower()
-    if not normalized:
-        return False
-    return any(token in normalized for token in ("uan", "login", "head", "frontend"))
 
 
 def run_script(
@@ -264,6 +327,7 @@ def main() -> int:
     logger = task.get_logger()
 
     task_params = task.get_parameters_as_dict(cast=True)
+    task_user_properties = task.get_user_properties(value_only=True)
     endpoint_id = args.endpoint_id or read_param(task_params, "endpoint_id")
     if not endpoint_id:
         logger.report_text(f"Parameter keys visible to task: {sorted(flatten_params(task_params).keys())}")
@@ -274,24 +338,24 @@ def main() -> int:
     start = time.time()
     logger.report_text(f"Submitting work to Globus endpoint {endpoint_id}")
 
-    endpoint_config = build_endpoint_config(args, task_params)
+    endpoint_config = build_endpoint_config(args, task_params, task_user_properties)
     if endpoint_config:
         logger.report_text(f"Using endpoint config: {endpoint_config}")
-    script = _normalize_optional_str(args.script) or _normalize_optional_str(read_param(task_params, "script"))
-    binary = _normalize_optional_str(args.binary) or _normalize_optional_str(
+    script = clean_str(args.script) or clean_str(read_param(task_params, "script"))
+    binary = clean_str(args.binary) or clean_str(
         read_param(task_params, "binary")
     ) or "/bin/bash"
-    script_working_directory = _normalize_optional_str(args.working_directory) or _normalize_optional_str(
+    script_working_directory = clean_str(args.working_directory) or clean_str(
         read_param(task_params, "working_directory")
     )
-    repo_url = _normalize_optional_str(args.repo_url) or _normalize_optional_str(read_param(task_params, "repo_url"))
-    repo_branch = _normalize_optional_str(args.repo_branch) or _normalize_optional_str(
+    repo_url = clean_str(args.repo_url) or clean_str(read_param(task_params, "repo_url"))
+    repo_branch = clean_str(args.repo_branch) or clean_str(
         read_param(task_params, "repo_branch")
     )
-    repo_working_directory = _normalize_optional_str(args.repo_working_directory) or _normalize_optional_str(
+    repo_working_directory = clean_str(args.repo_working_directory) or clean_str(
         read_param(task_params, "repo_working_directory")
     )
-    clone_repo = _parse_bool(args.clone_repo or read_param(task_params, "clone_repo"), default=False)
+    clone_repo = parse_bool(args.clone_repo or read_param(task_params, "clone_repo"), default=False)
     script_args = parse_script_args(args)
 
     with Executor(
@@ -355,15 +419,6 @@ def main() -> int:
                 f"Remote script failed with return code {output_value.get('return_code')}: "
                 f"{output_value.get('stderr', '')}"
             )
-        require_compute_node = _parse_bool(args.require_compute_node, default=True)
-        detected_host = _extract_hostname_from_stdout(str(output_value.get("stdout", "")))
-        if require_compute_node and _looks_like_login_host(detected_host):
-            raise RuntimeError(
-                "Script appears to run on a login/UAN host "
-                f"({detected_host}). Endpoint likely is not dispatching to compute nodes. "
-                "Fix endpoint provider/template on the endpoint host (PBS/Slurm) and retry. "
-                "Set GLOBUS_REQUIRE_COMPUTE_NODE=0 to bypass this guard."
-            )
     else:
         result = {
             "input": args.input_value,
@@ -400,7 +455,7 @@ def main() -> int:
             f"- cwd: {remote_result.get('cwd')}\n"
             f"- resolved_script_path: {remote_result.get('resolved_script_path')}\n"
             f"- elapsed_sec: {elapsed:.2f}\n"
-            f"- stdout_preview:\n{_preview(stdout_text)}"
+            f"- stdout_preview:\n{preview_text(stdout_text)}"
         )
     else:
         logger.report_text(

@@ -19,7 +19,8 @@ class GlobusComputeLauncher:
         endpoint_id: Optional[str] = None,
         script: Optional[str] = None,
         binary: str = "/bin/bash",
-        launcher_script: str = "./tasks/submit_globus_job.py",
+        launcher_module: str = "clearml_globus_bridge.submit_globus_job",
+        launcher_script: Optional[str] = None,
         launcher_binary: str = "python",
         launcher_working_directory: Optional[str] = None,
         script_working_directory: Optional[str] = None,
@@ -29,13 +30,6 @@ class GlobusComputeLauncher:
         timeout_sec: int = 900,
         artifact_path: str = "globus_result.json",
         script_args: Optional[Sequence[str]] = None,
-        account: Optional[str] = None,
-        queue: Optional[str] = None,
-        scheduler_queue: Optional[str] = None,
-        partition: Optional[str] = None,
-        num_nodes: Optional[int] = None,
-        cores_per_node: Optional[int] = None,
-        walltime: Optional[str] = None,
         endpoint_config: Optional[Dict[str, Any]] = None,
         user_properties: Optional[Dict[str, Any]] = None,
         tags: Optional[list[str]] = None,
@@ -45,8 +39,6 @@ class GlobusComputeLauncher:
             raise ValueError(
                 "endpoint_id is required. Pass endpoint_id or export GLOBUS_COMPUTE_ENDPOINT_ID."
             )
-        selected_queue = queue or scheduler_queue
-
         argparse_args = [
             ("endpoint-id", selected_endpoint),
             ("input-value", str(input_value)),
@@ -55,18 +47,6 @@ class GlobusComputeLauncher:
             ("artifact-path", artifact_path),
         ]
 
-        if account:
-            argparse_args.append(("account", account))
-        if selected_queue:
-            argparse_args.append(("scheduler-queue", selected_queue))
-        if partition:
-            argparse_args.append(("partition", partition))
-        if num_nodes is not None:
-            argparse_args.append(("num-nodes", str(num_nodes)))
-        if cores_per_node is not None:
-            argparse_args.append(("cores-per-node", str(cores_per_node)))
-        if walltime:
-            argparse_args.append(("walltime", walltime))
         if endpoint_config:
             argparse_args.append(("endpoint-config-json", json.dumps(endpoint_config)))
         if script:
@@ -82,17 +62,25 @@ class GlobusComputeLauncher:
                 argparse_args.append(("repo-branch", branch))
                 argparse_args.append(("repo-working-directory", working_directory))
 
-        task = Task.create(
-            project_name=project_name,
-            task_name=task_name,
-            task_type=task_type,
-            repo=repo,
-            branch=branch,
-            working_directory=launcher_working_directory or working_directory,
-            script=launcher_script,
-            binary=launcher_binary,
-            argparse_args=argparse_args,
-        )
+        create_kwargs: Dict[str, Any] = {
+            "project_name": project_name,
+            "task_name": task_name,
+            "task_type": task_type,
+            "repo": repo,
+            "branch": branch,
+            "working_directory": launcher_working_directory or working_directory,
+            "binary": launcher_binary,
+            "argparse_args": argparse_args,
+        }
+        if launcher_script:
+            create_kwargs["script"] = launcher_script
+        else:
+            create_kwargs["module"] = launcher_module
+            # Ensure clearml_globus_bridge package is importable on the agent.
+            # Requires working directory at repository root.
+            create_kwargs["packages"] = ["-e ."]
+
+        task = Task.create(**create_kwargs)
 
         task.set_parameters_as_dict(
             {
@@ -101,16 +89,7 @@ class GlobusComputeLauncher:
             }
         )
 
-        clearml_user_properties = {
-            "account": account,
-            "queue": selected_queue,
-            "partition": partition,
-            "num_nodes": num_nodes,
-            "cores_per_node": cores_per_node,
-            "walltime": walltime,
-        }
-        if user_properties:
-            clearml_user_properties.update(user_properties)
+        clearml_user_properties = dict(user_properties or {})
         clearml_user_properties = {
             key: value for key, value in clearml_user_properties.items() if value is not None
         }
