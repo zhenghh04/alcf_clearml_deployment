@@ -1,4 +1,6 @@
 import argparse
+import os
+import subprocess
 from pathlib import Path
 
 
@@ -69,6 +71,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Create .bak copies before overwriting.",
     )
+    parser.add_argument(
+        "--skip-endpoint-configure",
+        action="store_true",
+        help="Skip running 'globus-compute-endpoint configure <endpoint-name>'.",
+    )
     return parser.parse_args()
 
 
@@ -86,10 +93,45 @@ def write_if_allowed(path: Path, content: str, overwrite: bool, backup: bool) ->
     return f"write {path}"
 
 
+def configure_endpoint(base_dir: Path, endpoint_name: str, skip: bool) -> str:
+    if skip:
+        return "skip endpoint configure (requested)"
+
+    cmd = ["globus-compute-endpoint", "configure", endpoint_name]
+    env = os.environ.copy()
+    env.setdefault("GLOBUS_COMPUTE_USER_DIR", str(base_dir))
+    completed = subprocess.run(
+        cmd,
+        check=False,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+    if completed.returncode == 0:
+        return f"run {' '.join(cmd)}"
+
+    combined = f"{completed.stdout}\n{completed.stderr}".lower()
+    if "already exists" in combined or "exists already" in combined:
+        return "skip endpoint configure (already exists)"
+
+    raise RuntimeError(
+        "Failed to configure endpoint with "
+        f"'{' '.join(cmd)}' (exit={completed.returncode}).\n"
+        f"stdout:\n{completed.stdout}\n"
+        f"stderr:\n{completed.stderr}"
+    )
+
+
 def main() -> int:
     args = parse_args()
     base_dir = Path(args.base_dir).expanduser()
     endpoint_dir = base_dir / args.endpoint_name
+    configure_result = configure_endpoint(
+        base_dir=base_dir,
+        endpoint_name=args.endpoint_name,
+        skip=args.skip_endpoint_configure,
+    )
     endpoint_dir.mkdir(parents=True, exist_ok=True)
 
     config_path = endpoint_dir / "config.yaml"
@@ -114,6 +156,7 @@ def main() -> int:
     )
 
     results = [
+        configure_result,
         write_if_allowed(
             config_path,
             config_content,
