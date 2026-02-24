@@ -6,7 +6,7 @@ from clearml_globus_bridge.globus_compute_launcher import GlobusComputeLauncher
 
 PROJECT = "amsc/pipeline-globus-bridge"
 QUEUE = os.getenv("CLEARML_CONTROLLER_QUEUE", "crux-services")
-ENDPOINT_ID = os.getenv("GLOBUS_COMPUTE_ENDPOINT_ID", "66786535-12ec-463d-9d42-72f03d6aac41")
+ENDPOINT_ID = os.getenv("GLOBUS_COMPUTE_ENDPOINT_ID", "e21502e9-a60c-45dc-b480-6bb5e04789bc")
 LOCAL_WRAPPER_WORKDIR = "./tests/pipeline/globus_compute_bridge"
 
 # Scheduler/resource settings are intentionally configured in-code
