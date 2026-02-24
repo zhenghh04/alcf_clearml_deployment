@@ -60,6 +60,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--repo-branch", default="")
     parser.add_argument("--repo-working-directory", default="")
     parser.add_argument("--clone-repo", default="")
+    parser.add_argument(
+        "--require-compute-node",
+        default=os.getenv("GLOBUS_REQUIRE_COMPUTE_NODE", "1"),
+        help="Fail if script appears to run on login/UAN host (default: 1).",
+    )
     return parser.parse_args()
 
 
@@ -190,6 +195,20 @@ def _preview(text: str, max_lines: int = 20) -> str:
         return text
     head = "\n".join(lines[:max_lines])
     return f"{head}\n... ({len(lines) - max_lines} more lines)"
+
+
+def _extract_hostname_from_stdout(text: str) -> str:
+    for line in text.splitlines():
+        if line.lower().startswith("hostname:"):
+            return line.split(":", 1)[1].strip()
+    return ""
+
+
+def _looks_like_login_host(hostname: str) -> bool:
+    normalized = hostname.strip().lower()
+    if not normalized:
+        return False
+    return any(token in normalized for token in ("uan", "login", "head", "frontend"))
 
 
 def run_script(
@@ -375,6 +394,15 @@ def main() -> int:
             raise RuntimeError(
                 f"Remote script failed with return code {output_value.get('return_code')}: "
                 f"{output_value.get('stderr', '')}"
+            )
+        require_compute_node = _parse_bool(args.require_compute_node, default=True)
+        detected_host = _extract_hostname_from_stdout(str(output_value.get("stdout", "")))
+        if require_compute_node and _looks_like_login_host(detected_host):
+            raise RuntimeError(
+                "Script appears to run on a login/UAN host "
+                f"({detected_host}). Endpoint likely is not dispatching to compute nodes. "
+                "Fix endpoint provider/template on the endpoint host (PBS/Slurm) and retry. "
+                "Set GLOBUS_REQUIRE_COMPUTE_NODE=0 to bypass this guard."
             )
     else:
         result = {

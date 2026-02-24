@@ -74,3 +74,18 @@ clearml-globus-configure-pbs-endpoint \
 This writes:
 - `~/.globus_compute/<endpoint-name>/config.yaml`
 - `~/.globus_compute/<endpoint-name>/user_config_template.yaml.j2`
+
+For Slurm-based endpoints:
+
+```bash
+clearml-globus-configure-slurm-endpoint \
+  --endpoint-name perlmutter-user \
+  --account m1234 \
+  --partition regular \
+  --qos normal \
+  --walltime 00:30:00 \
+  --nodes-per-block 1 \
+  --cores-per-node 64 \
+  --gpus-per-node 4 \
+  --overwrite --backup
+```

@@ -16,6 +16,7 @@ dependencies = [
 [project.scripts]
 clearml-globus-submit = "clearml_globus_bridge.submit_globus_job:main"
 clearml-globus-configure-pbs-endpoint = "clearml_globus_bridge.configure_pbs_endpoint:main"
+clearml-globus-configure-slurm-endpoint = "clearml_globus_bridge.configure_slurm_endpoint:main"
 
 [tool.setuptools.packages.find]
 include = ["clearml_globus_bridge*"]
