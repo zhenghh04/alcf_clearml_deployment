@@ -1,5 +1,5 @@
 #!/bin/bash
-echo "Started job on $(hostname) at $(date)"
+echo "Started job $PBS_JOBID on $(hostname) at $(date)"
 echo "Running a dummy script on the Globus Compute endpoint..."
 echo "Sleeping for 10 seconds to simulate a long-running task..."
 echo "Running on nodes: $PBS_NODEFILE"
