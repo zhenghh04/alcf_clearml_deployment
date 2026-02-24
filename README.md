@@ -54,3 +54,23 @@ python tests/job_launching/python/test_login.py
 
 ## Notes
 - Many scripts assume ClearML server URLs, queues, and filesystem paths that are specific to ALCF environments. Adjust as needed for your site.
+
+## Globus Compute PBS Config Helper
+
+Use this helper to generate/update endpoint files for PBS-based Globus Compute endpoints:
+
+```bash
+clearml-globus-configure-pbs-endpoint \
+  --endpoint-name aurora-user \
+  --account datascience \
+  --queue debug \
+  --walltime 00:10:00 \
+  --nodes-per-block 1 \
+  --cores-per-node 64 \
+  --filesystems flare:home \
+  --overwrite --backup
+```
+
+This writes:
+- `~/.globus_compute/<endpoint-name>/config.yaml`
+- `~/.globus_compute/<endpoint-name>/user_config_template.yaml.j2`
