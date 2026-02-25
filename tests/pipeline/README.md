@@ -196,3 +196,11 @@ Files:
 - `tests/pipeline/globus_compute_bridge/pipeline.py`
 - `tests/pipeline/globus_compute_bridge/bridge_worker.py`
 - `tests/pipeline/globus_compute_bridge/README.md`
+
+## IRI API bridge pattern
+Use ClearML for orchestration and an IRI-compatible facility API for remote job execution:
+
+- `tests/pipeline/iri_bridge/pipeline.py`
+- `tests/pipeline/iri_bridge/README.md`
+- `clearml_iri_bridge/iri_launcher.py`
+- `clearml_iri_bridge/submit_iri_job.py`

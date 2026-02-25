@@ -1,7 +1,16 @@
 import os
 import shlex
+import sys
+from pathlib import Path
 
 from clearml import PipelineController, Task
+
+# Ensure agent-side execution imports clearml_globus_bridge from this repo checkout
+# instead of a stale globally installed package.
+REPO_ROOT = Path(__file__).resolve().parents[3]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 from clearml_globus_bridge.globus_compute_launcher import GlobusComputeLauncher
 
 # Scheduler/resource settings are intentionally configured in-code
@@ -52,7 +61,7 @@ def main() -> None:
     )
 
     postprocess_task = Task.create(
-        project_name="AmSC/pipeline-globus-bridge",
+        project_name="AmSC/pipeline-globus-bridge-zhenghh",
         task_name="globus-postprocess-v2",
         task_type=Task.TaskTypes.testing,
         repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
@@ -65,7 +74,7 @@ def main() -> None:
 
     pipe = PipelineController(
         name="globus-compute-bridge-pipeline",
-        project="amsc/pipeline-globus-bridge",
+        project="AmSC/pipeline-globus-bridge-zhenghh",
         version="0.1",
         add_pipeline_tags=True,
     )

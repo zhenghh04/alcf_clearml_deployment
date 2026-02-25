@@ -89,3 +89,12 @@ clearml-globus-configure-slurm-endpoint \
   --gpus-per-node 4 \
   --overwrite --backup
 ```
+
+## IRI API Bridge
+
+This repo now also includes an IRI-compatible connector:
+- Python module: `clearml_iri_bridge`
+- CLI submit wrapper: `clearml-iri-submit`
+- Example pipeline: `tests/pipeline/iri_bridge/pipeline.py`
+
+This connector is designed for APIs like `https://api.iri.nersc.gov` and accepts configurable submit/status paths and response field mappings.
