@@ -8,6 +8,13 @@ from clearml import Task
 class GlobusComputeLauncher:
     """Create ClearML tasks that submit work to Globus Compute endpoints."""
 
+    @staticmethod
+    def _task_type_to_cli_value(task_type: Any) -> str:
+        value = getattr(task_type, "value", None)
+        if value:
+            return str(value)
+        return str(task_type)
+
     def create(
         self,
         project_name: str,
@@ -17,6 +24,7 @@ class GlobusComputeLauncher:
         working_directory: str,
         task_type: Task.TaskTypes = Task.TaskTypes.data_processing,
         endpoint_id: Optional[str] = None,
+        endpoint_name: Optional[str] = None,
         script: Optional[str] = None,
         binary: str = "/bin/bash",
         launcher_module: str = "clearml_globus_bridge.submit_globus_job",
@@ -34,18 +42,26 @@ class GlobusComputeLauncher:
         user_properties: Optional[Dict[str, Any]] = None,
         tags: Optional[list[str]] = None,
     ) -> Task:
-        selected_endpoint = endpoint_id or os.getenv("GLOBUS_COMPUTE_ENDPOINT_ID")
-        if not selected_endpoint:
+        selected_endpoint_id = endpoint_id or os.getenv("GLOBUS_COMPUTE_ENDPOINT_ID")
+        selected_endpoint_name = endpoint_name or os.getenv("GLOBUS_COMPUTE_ENDPOINT_NAME")
+        if not selected_endpoint_id and not selected_endpoint_name:
             raise ValueError(
-                "endpoint_id is required. Pass endpoint_id or export GLOBUS_COMPUTE_ENDPOINT_ID."
+                "Endpoint is required. Pass endpoint_id or endpoint_name "
+                "(or export GLOBUS_COMPUTE_ENDPOINT_ID / GLOBUS_COMPUTE_ENDPOINT_NAME)."
             )
         argparse_args = [
-            ("endpoint-id", selected_endpoint),
+            ("project-name", project_name),
+            ("task-name", task_name),
+            ("task-type", self._task_type_to_cli_value(task_type)),
             ("input-value", str(input_value)),
             ("poll-interval", str(poll_interval)),
             ("timeout-sec", str(timeout_sec)),
             ("artifact-path", artifact_path),
         ]
+        if selected_endpoint_id:
+            argparse_args.append(("endpoint-id", selected_endpoint_id))
+        if selected_endpoint_name:
+            argparse_args.append(("endpoint-name", selected_endpoint_name))
 
         if endpoint_config:
             argparse_args.append(("endpoint-config-json", json.dumps(endpoint_config)))
@@ -82,12 +98,15 @@ class GlobusComputeLauncher:
 
         task = Task.create(**create_kwargs)
 
-        task.set_parameters_as_dict(
-            {
-                "Args/endpoint-id": selected_endpoint,
-                "env:GLOBUS_COMPUTE_ENDPOINT_ID": selected_endpoint,
-            }
-        )
+        params_to_set: Dict[str, str] = {}
+        if selected_endpoint_id:
+            params_to_set["Args/endpoint-id"] = selected_endpoint_id
+            params_to_set["env:GLOBUS_COMPUTE_ENDPOINT_ID"] = selected_endpoint_id
+        if selected_endpoint_name:
+            params_to_set["Args/endpoint-name"] = selected_endpoint_name
+            params_to_set["env:GLOBUS_COMPUTE_ENDPOINT_NAME"] = selected_endpoint_name
+        if params_to_set:
+            task.set_parameters_as_dict(params_to_set)
 
         clearml_user_properties = dict(user_properties or {})
         clearml_user_properties = {

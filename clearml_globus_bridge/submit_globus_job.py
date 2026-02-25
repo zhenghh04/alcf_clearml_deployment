@@ -6,7 +6,6 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from clearml import Task
 from globus_compute_sdk import Executor
 from globus_compute_sdk.serialize import AllCodeStrategies, ComputeSerializer
 
@@ -19,15 +18,6 @@ def clean_str(value: Any) -> str:
     return normalized
 
 
-def parse_positive_int(value: str) -> Optional[int]:
-    if not value:
-        return None
-    parsed = int(value)
-    if parsed <= 0:
-        return None
-    return parsed
-
-
 def parse_bool(value: Any, default: bool = False) -> bool:
     normalized = clean_str(value).lower()
     if not normalized:
@@ -38,19 +28,29 @@ def parse_bool(value: Any, default: bool = False) -> bool:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        "--project-name",
+        default=os.getenv("CLEARML_PROJECT_NAME", "amsc/pipeline-globus-bridge"),
+    )
+    parser.add_argument(
+        "--task-name",
+        default=os.getenv("CLEARML_TASK_NAME", "submit-globus-compute-job"),
+    )
+    parser.add_argument(
+        "--task-type",
+        default=os.getenv("CLEARML_TASK_TYPE", "data_processing"),
+    )
+    parser.add_argument(
         "--endpoint-id",
         default=os.getenv("GLOBUS_COMPUTE_ENDPOINT_ID", ""),
+    )
+    parser.add_argument(
+        "--endpoint-name",
+        default=os.getenv("GLOBUS_COMPUTE_ENDPOINT_NAME", ""),
     )
     parser.add_argument("--input-value", type=int, default=7)
     parser.add_argument("--poll-interval", type=int, default=5)
     parser.add_argument("--timeout-sec", type=int, default=900)
     parser.add_argument("--artifact-path", default="globus_result.json")
-    parser.add_argument("--account", default="")
-    parser.add_argument("--scheduler-queue", default="")
-    parser.add_argument("--partition", default="")
-    parser.add_argument("--num-nodes", type=int, default=0)
-    parser.add_argument("--cores-per-node", type=int, default=0)
-    parser.add_argument("--walltime", default="")
     parser.add_argument("--endpoint-config-json", default="")
     parser.add_argument("--script", default="")
     parser.add_argument("--script-args-json", default="")
@@ -152,58 +152,6 @@ def build_endpoint_config(
 ) -> Dict[str, Any]:
     config: Dict[str, Any] = {}
 
-    account = (
-        clean_str(args.account)
-        or read_user_property(task_user_properties, "account")
-        or clean_str(read_param(task_params, "account"))
-    )
-    scheduler_queue = (
-        clean_str(args.scheduler_queue)
-        or read_user_property(task_user_properties, "queue")
-        or clean_str(read_param(task_params, "queue"))
-    )
-    partition = (
-        clean_str(args.partition)
-        or read_user_property(task_user_properties, "partition")
-        or clean_str(read_param(task_params, "partition"))
-    )
-    num_nodes_raw = (
-        clean_str(args.num_nodes)
-        if args.num_nodes
-        else (
-            read_user_property(task_user_properties, "num_nodes")
-            or clean_str(read_param(task_params, "num_nodes"))
-        )
-    )
-    cores_per_node_raw = (
-        clean_str(args.cores_per_node)
-        if args.cores_per_node
-        else (
-            read_user_property(task_user_properties, "cores_per_node")
-            or clean_str(read_param(task_params, "cores_per_node"))
-        )
-    )
-    walltime = (
-        clean_str(args.walltime)
-        or read_user_property(task_user_properties, "walltime")
-        or clean_str(read_param(task_params, "walltime"))
-    )
-
-    if account:
-        config["account"] = account
-    if scheduler_queue:
-        config["queue"] = scheduler_queue
-    if partition:
-        config["partition"] = partition
-    num_nodes = parse_positive_int(num_nodes_raw)
-    cores_per_node = parse_positive_int(cores_per_node_raw)
-    if num_nodes is not None:
-        config["num_nodes"] = num_nodes
-    if cores_per_node is not None:
-        config["cores_per_node"] = cores_per_node
-    if walltime:
-        config["walltime"] = walltime
-
     endpoint_config_json = (
         clean_str(args.endpoint_config_json)
         or read_user_property(task_user_properties, "endpoint_config_json")
@@ -213,12 +161,6 @@ def build_endpoint_config(
         config.update(json.loads(endpoint_config_json))
 
     reserved_keys = {
-        "account",
-        "queue",
-        "partition",
-        "num_nodes",
-        "cores_per_node",
-        "walltime",
         "endpoint_config_json",
     }
     for key, raw_value in task_user_properties.items():
@@ -231,6 +173,77 @@ def build_endpoint_config(
         config[canonical_key] = parsed_value
 
     return config
+
+
+def resolve_endpoint_id_from_name(endpoint_name: str) -> str:
+    from globus_compute_sdk import Client
+
+    normalized_name = clean_str(endpoint_name)
+    if not normalized_name:
+        return ""
+
+    client = Client()
+    endpoints = client.get_endpoints(role="any") or []
+
+    def endpoint_name_of(item: Dict[str, Any]) -> str:
+        return clean_str(
+            item.get("display_name")
+            or item.get("name")
+            or item.get("endpoint_name")
+        )
+
+    def endpoint_id_of(item: Dict[str, Any]) -> str:
+        return clean_str(
+            item.get("uuid")
+            or item.get("id")
+            or item.get("endpoint_id")
+        )
+
+    exact_matches = [
+        endpoint_id_of(item)
+        for item in endpoints
+        if endpoint_name_of(item) == normalized_name and endpoint_id_of(item)
+    ]
+    if len(exact_matches) == 1:
+        return exact_matches[0]
+    if len(exact_matches) > 1:
+        raise ValueError(
+            f"Multiple endpoints found for name '{normalized_name}'. "
+            f"Please pass --endpoint-id explicitly."
+        )
+
+    partial_matches = [
+        endpoint_id_of(item)
+        for item in endpoints
+        if normalized_name.lower() in endpoint_name_of(item).lower() and endpoint_id_of(item)
+    ]
+    if len(partial_matches) == 1:
+        return partial_matches[0]
+    if len(partial_matches) > 1:
+        raise ValueError(
+            f"Multiple endpoint partial matches found for '{normalized_name}'. "
+            f"Please pass --endpoint-id explicitly."
+        )
+    raise ValueError(
+        f"No endpoint found with name '{normalized_name}'. "
+        "Check endpoint name or pass --endpoint-id."
+    )
+
+
+def resolve_endpoint_name_from_id(endpoint_id: str) -> str:
+    from globus_compute_sdk import Client
+
+    normalized_id = clean_str(endpoint_id)
+    if not normalized_id:
+        return ""
+
+    client = Client()
+    metadata = client.get_endpoint_metadata(normalized_id) or {}
+    return clean_str(
+        metadata.get("display_name")
+        or metadata.get("name")
+        or metadata.get("endpoint_name")
+    )
 
 
 def parse_script_args(args: argparse.Namespace) -> List[str]:
@@ -371,28 +384,71 @@ def run_script(
     }
 
 
+def resolve_task_type(TaskCls: Any, task_type_name: str) -> Any:
+    normalized = clean_str(task_type_name)
+    if not normalized:
+        return TaskCls.TaskTypes.data_processing
+    for task_type in TaskCls.TaskTypes:
+        value = clean_str(getattr(task_type, "value", ""))
+        name = clean_str(getattr(task_type, "name", ""))
+        if normalized == value or normalized == name.lower():
+            return task_type
+    raise ValueError(
+        f"Unsupported task type '{task_type_name}'. "
+        f"Supported values: {[getattr(t, 'value', str(t)) for t in TaskCls.TaskTypes]}"
+    )
+
+
 def main() -> int:
     args = parse_args()
+    from clearml import Task
+
+    initial_params = vars(args)
+    project_name = clean_str(args.project_name) or "amsc/pipeline-globus-bridge"
+    task_name = clean_str(args.task_name) or "submit-globus-compute-job"
+    task_type = resolve_task_type(Task, args.task_type)
 
     task = Task.init(
-        project_name="amsc/pipeline-globus-bridge",
-        task_name="submit-globus-compute-job",
-        task_type=Task.TaskTypes.data_processing,
+        project_name=project_name,
+        task_name=task_name,
+        task_type=task_type,
     )
-    task.connect(vars(args), name="bridge")
+    task.connect(initial_params, name="bridge")
     logger = task.get_logger()
 
     task_params = task.get_parameters_as_dict(cast=True)
     task_user_properties = task.get_user_properties(value_only=True)
-    endpoint_id = args.endpoint_id or read_param(task_params, "endpoint_id")
+    endpoint_id = (
+        clean_str(args.endpoint_id)
+        or clean_str(read_param(task_params, "endpoint_id"))
+    )
+    endpoint_name = (
+        clean_str(args.endpoint_name)
+        or clean_str(read_param(task_params, "endpoint_name"))
+    )
+    if not endpoint_id and endpoint_name:
+        endpoint_id = resolve_endpoint_id_from_name(endpoint_name)
+    if not endpoint_name and endpoint_id:
+        try:
+            endpoint_name = resolve_endpoint_name_from_id(endpoint_id)
+        except Exception:
+            endpoint_name = ""
     if not endpoint_id:
         logger.report_text(f"Parameter keys visible to task: {sorted(flatten_params(task_params).keys())}")
         raise ValueError(
-            "endpoint-id is required. Set --endpoint-id or GLOBUS_COMPUTE_ENDPOINT_ID."
+            "Endpoint is required. Set --endpoint-id or --endpoint-name "
+            "(or env GLOBUS_COMPUTE_ENDPOINT_ID / GLOBUS_COMPUTE_ENDPOINT_NAME)."
         )
 
     start = time.time()
-    logger.report_text(f"Submitting work to Globus endpoint {endpoint_id}")
+    logger.report_text(
+        "ClearML task context: "
+        f"project={project_name} task={task_name} task_type={clean_str(args.task_type) or 'data_processing'}"
+    )
+    logger.report_text(
+        "Submitting work to Globus endpoint "
+        f"name={endpoint_name or '<unknown>'} id={endpoint_id}"
+    )
 
     endpoint_config = build_endpoint_config(args, task_params, task_user_properties)
     if endpoint_config:

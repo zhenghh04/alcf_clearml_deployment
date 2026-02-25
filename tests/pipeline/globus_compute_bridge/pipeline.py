@@ -30,10 +30,10 @@ def main() -> None:
     submit_task = launcher.create(
         project_name=PROJECT,
         task_name="globus-submit-wrapper-v8",
+        task_type=Task.TaskTypes.data_processing,
         repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
         branch="main",
         working_directory=LOCAL_WRAPPER_WORKDIR,
-        task_type=Task.TaskTypes.data_processing,
         # Run launcher task from repo root so module mode + `packages=["-e ."]` works.
         launcher_working_directory=".",
         script_working_directory=_env_optional("GLOBUS_SCRIPT_WORKING_DIRECTORY"),
@@ -46,7 +46,7 @@ def main() -> None:
     user_props = {
         "account": "datascience",
         "queue": "workq",
-        "num_nodes": 1,
+        "num_nodes": 2,
         "cores_per_node": 64,
         "walltime": "00:10:00",
         "filesystems": "eagle:home",
@@ -88,7 +88,7 @@ def main() -> None:
         parents=["globus_submit"],
     )
 
-    pipe.start(queue=QUEUE)
+    pipe.start(queue='zion')
     print(f"Pipeline started: {pipe.id}")
 
 

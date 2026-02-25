@@ -1,5 +1,6 @@
 import argparse
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -25,16 +26,24 @@ USER_CONFIG_TEMPLATE = """# Dynamic per-submission overrides from user_endpoint_
 # These values are consumed by Globus Compute when tasks are submitted
 # with Executor(..., user_endpoint_config=...).
 
-endpoint_setup: {{ endpoint_setup | default() }}
+endpoint_setup: |
+  source /etc/profile
+  export PATH={endpoint_bin_dir}:{scheduler_bin_dir}:/usr/bin:/bin
 
 engine:
+  type: GlobusComputeEngine
   provider:
-    account: "{{{{ account | default('{account}') }}}}"
-    queue: "{{{{ queue | default('{queue}') }}}}"
-    walltime: "{{{{ walltime | default('{walltime}') }}}}"
+    type: PBSProProvider
+    account: {{{{ account | default('{account}') }}}}
+    queue: {{{{ queue | default('{queue}') }}}}
+    walltime: {{{{ walltime | default('{walltime}') }}}}
     nodes_per_block: {{{{ num_nodes | default({nodes_per_block}) }}}}
+    init_blocks: {{{{ init_blocks | default(0) }}}}
+    min_blocks: {{{{ min_blocks | default(0) }}}}
+    max_blocks: {{{{ max_blocks | default({template_max_blocks}) }}}}
     scheduler_options: |
       #PBS -l select={{{{ num_nodes | default({nodes_per_block}) }}}}:ncpus={{{{ cores_per_node | default({cores_per_node}) }}}}
+      #PBS -l place={{{{ place | default('{place}') }}}}
       #PBS -l walltime={{{{ walltime | default('{walltime}') }}}}
       #PBS -l filesystems={{{{ filesystems | default('{filesystems}') }}}}
     worker_init: {{{{ worker_init | default() }}}}
@@ -61,6 +70,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-blocks", type=int, default=1)
     parser.add_argument("--cores-per-node", type=int, default=64)
     parser.add_argument("--filesystems", default="flare:home")
+    parser.add_argument("--place", default="scatter")
+    parser.add_argument(
+        "--scheduler-bin-dir",
+        default="/opt/pbs/bin",
+        help="Directory containing qsub/qstat binaries.",
+    )
+    parser.add_argument(
+        "--endpoint-bin-dir",
+        default="",
+        help="Directory containing globus-compute-endpoint. Auto-detected if omitted.",
+    )
     parser.add_argument(
         "--overwrite",
         dest="overwrite",
@@ -140,6 +160,11 @@ def configure_endpoint(base_dir: Path, endpoint_name: str, skip: bool) -> str:
 
 def main() -> int:
     args = parse_args()
+    endpoint_bin_dir = args.endpoint_bin_dir.strip()
+    if not endpoint_bin_dir:
+        endpoint_cli = shutil.which("globus-compute-endpoint")
+        endpoint_bin_dir = str(Path(endpoint_cli).parent) if endpoint_cli else "/usr/bin"
+
     login_result = "skip endpoint login (requested)"
     if args.login_first:
         subprocess.run(["globus-compute-endpoint", "login"], check=True)
@@ -173,6 +198,10 @@ def main() -> int:
         nodes_per_block=args.nodes_per_block,
         cores_per_node=args.cores_per_node,
         filesystems=args.filesystems,
+        place=args.place,
+        template_max_blocks=args.max_blocks,
+        endpoint_bin_dir=endpoint_bin_dir,
+        scheduler_bin_dir=args.scheduler_bin_dir,
     )
 
     results = [
