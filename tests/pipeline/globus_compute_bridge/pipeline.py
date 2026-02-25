@@ -19,7 +19,7 @@ def _env_optional(name: str, default: str | None = None) -> str | None:
 def main() -> None:
     launcher = GlobusComputeLauncher()
     submit_task = launcher.create(
-        project_name="amsc-zhenghh/pipeline-globus-bridge-zhenghh",
+        project_name="AmSC/pipeline-globus-bridge-zhenghh",
         task_name="crux-globus",
         task_type=Task.TaskTypes.data_processing,
         repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
@@ -52,7 +52,7 @@ def main() -> None:
     )
 
     postprocess_task = Task.create(
-        project_name="zhenghh-amsc/pipeline-globus-bridge",
+        project_name="AmSC/pipeline-globus-bridge",
         task_name="globus-postprocess-v2",
         task_type=Task.TaskTypes.testing,
         repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
