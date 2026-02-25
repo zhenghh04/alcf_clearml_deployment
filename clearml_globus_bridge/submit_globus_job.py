@@ -50,6 +50,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--input-value", type=int, default=7)
     parser.add_argument("--poll-interval", type=int, default=5)
     parser.add_argument("--timeout-sec", type=int, default=900)
+    parser.add_argument(
+        "--report-wait-metrics",
+        default=os.getenv("GLOBUS_REPORT_WAIT_METRICS", "0"),
+        help="Enable per-poll wait metric reporting to ClearML (default: disabled).",
+    )
     parser.add_argument("--artifact-path", default="globus_result.json")
     parser.add_argument("--endpoint-config-json", default="")
     parser.add_argument("--script", default="")
@@ -509,9 +514,14 @@ def main() -> int:
                     future = executor.submit(operator.mul, args.input_value, args.input_value)
                 while not future.done():
                     elapsed = time.time() - start
-                    logger.report_scalar(
-                        "globus_bridge", "wait_time_sec", value=elapsed, iteration=int(elapsed)
-                    )
+                    if parse_bool(args.report_wait_metrics, default=False):
+                        try:
+                            logger.report_scalar(
+                                "globus_bridge", "wait_time_sec", value=elapsed, iteration=int(elapsed)
+                            )
+                        except RuntimeError:
+                            # ClearML monitor thread can fail under tight thread limits.
+                            pass
                     if elapsed > args.timeout_sec:
                         raise TimeoutError(
                             f"Timed out waiting for Globus task after {args.timeout_sec}s"
