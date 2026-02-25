@@ -88,7 +88,7 @@ def main() -> None:
         parents=["globus_submit"],
     )
 
-    pipe.start(queue='zion')
+    pipe.start(queue='crux-services')
     print(f"Pipeline started: {pipe.id}")
 
 
