@@ -50,6 +50,9 @@ def main() -> None:
         "cores_per_node": 64,
         "walltime": "00:10:00",
         "filesystems": "eagle:home",
+        "max_blocks": 10,
+        "min_blocks": 0,
+        "init_blocks": 0,
     }
 
     submit_task.set_user_properties(
