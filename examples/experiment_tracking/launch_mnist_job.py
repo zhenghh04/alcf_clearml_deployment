@@ -17,7 +17,7 @@ def main():
     created_task = Task.create(
         project_name="AmSC",
         task_name="PyTorch MNIST train (enqueued)",
-        repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
+        repo="git@github.com:zhenghh04/alcf_clearml_deployment.git",
         branch="main",        
         script="examples/experiment_tracking/pytorch_mnist.py",
     )

@@ -43,7 +43,7 @@ prepare_task = Task.create(
     project_name="amsc/pipeline-demo",
     task_name="prepare-data",
     task_type=Task.TaskTypes.data_processing,
-    repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
+    repo="git@github.com:zhenghh04/alcf_clearml_deployment.git",
     branch="main",
     working_directory="./examples/pipeline/multi_facilities",
     script="./tasks/prepare_data.sh",
@@ -55,7 +55,7 @@ transfer_task = Task.create(
     project_name="amsc/pipeline-demo",
     task_name="transfer-data",
     task_type=Task.TaskTypes.data_processing,
-    repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
+    repo="git@github.com:zhenghh04/alcf_clearml_deployment.git",
     branch="main",
     working_directory="./examples/pipeline/multi_facilities",
     script="./tasks/globus_transfer.sh",
@@ -66,7 +66,7 @@ train_task = Task.create(
     project_name="amsc/pipeline-demo",
     task_name="train-model",
     task_type=Task.TaskTypes.training,
-    repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
+    repo="git@github.com:zhenghh04/alcf_clearml_deployment.git",
     branch="main",
     working_directory="./examples/pipeline/multi_facilities",
     script="./tasks/train.sh",
@@ -84,7 +84,7 @@ eval_task = Task.create(
     project_name="amsc/pipeline-demo",
     task_name="evaluate-model",
     task_type=Task.TaskTypes.testing,
-    repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
+    repo="git@github.com:zhenghh04/alcf_clearml_deployment.git",
     branch="main",
     working_directory="./examples/pipeline/multi_facilities",
     script="./tasks/evaluate.sh",
@@ -202,5 +202,5 @@ Use ClearML for orchestration and an IRI-compatible facility API for remote job 
 
 - `examples/pipeline/iri_bridge/pipeline.py`
 - `examples/pipeline/iri_bridge/README.md`
-- `clearml_iri_bridge/iri_launcher.py`
-- `clearml_iri_bridge/submit_iri_job.py`
+- `clearml_bridges/clearml_iri_bridge/iri_launcher.py`
+- `clearml_bridges/clearml_iri_bridge/submit_iri_job.py`

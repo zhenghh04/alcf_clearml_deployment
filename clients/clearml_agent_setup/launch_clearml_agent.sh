@@ -22,7 +22,7 @@ fi
 
 # Scheduler resolution order:
 # 1) explicit env var SCHEDULER
-# 2) clients/<CLIENT>/system.conf (SCHEDULER=...)
+# 2) clients/clearml_agent_setup/<CLIENT>/system.conf (SCHEDULER=...)
 # 3) fallback to pbs
 if [[ -f "${SYSTEM_CONF}" ]]; then
   # Preserve explicit env override if provided by caller.

@@ -6,38 +6,42 @@ This repository contains setup scripts and example workflows for evaluating Clea
 
 ## Quick links
 - [Server setup guide](server/README.md)
-- [Globus bridge package guide](clearml_globus_bridge/README.md)
+- [Globus bridge package guide](clearml_bridges/clearml_globus_bridge/README.md)
 - [Pipeline examples guide](examples/pipeline/README.md)
-- [Globus endpoint notes](globus_endpoints/README.md)
+- [Globus endpoint notes](clients/globus_endpoint_setup/README.md)
 
 ## Repository layout
 - [README.md](README.md): Top-level navigation and setup flow.
 - `server/`: ClearML server setup and Globus auth connector.
-- `clients/`: Agent install/launch scripts and machine-specific configs.
+- `clients/`: Client-side setup split into agent setup and endpoint setup helpers.
 - `examples/`: Runnable examples for job launching, pipelines, data, and tracking.
-- `clearml_globus_bridge/`: Globus bridge package and endpoint config tools.
-- `clearml_iri_bridge/`: IRI bridge package and submit wrapper.
-- `globus_endpoints/`: Endpoint configuration references.
+- `clearml_bridges/clearml_globus_bridge/`: Globus bridge package and endpoint config tools.
+- `clearml_bridges/clearml_iri_bridge/`: IRI bridge package and submit wrapper.
+- `clients/globus_endpoint_setup/`: Endpoint configuration references.
 - `pyproject.toml`, `requirements.txt`: Package/dependency definitions.
 
 Directory snapshot:
 ```text
 .
 ├── clients/
-│   ├── install_clearml.sh
-│   ├── launch_clearml_agent.sh
-│   ├── aurora|crux|perlmutter|polaris|sirius/
-│   │   ├── pbs.template
-│   │   └── system.conf
-│   ├── clearml.conf
-│   └── pbs.template
-├── clearml_globus_bridge/
+│   ├── README.md
+│   ├── clearml_agent_setup/
+│   │   ├── install_clearml.sh
+│   │   ├── launch_clearml_agent.sh
+│   │   ├── launch_local_agent.sh
+│   │   ├── aurora|crux|perlmutter|polaris|sirius/
+│   │   └── README.md
+│   └── globus_endpoint_setup/
+│       ├── ssh_proxy.sh
+│       ├── ssh_tunnel_clearml.sh
+│       └── README.md
+├── clearml_bridges/clearml_globus_bridge/
 │   ├── README.md
 │   ├── configure_pbs_endpoint.py
 │   ├── configure_slurm_endpoint.py
 │   ├── globus_compute_launcher.py
 │   └── submit_globus_job.py
-├── clearml_iri_bridge/
+├── clearml_bridges/clearml_iri_bridge/
 │   ├── iri_launcher.py
 │   └── submit_iri_job.py
 ├── examples/
@@ -46,9 +50,6 @@ Directory snapshot:
 │   ├── experiment_tracking/
 │   ├── job_launching/
 │   └── pipeline/
-├── globus_endpoints/
-│   ├── README.md
-│   └── ENDPOINT_CONFIG_JSON.md
 ├── server/
 │   ├── README.md
 │   ├── ubuntu_setup.sh
@@ -132,8 +133,8 @@ End-to-end flow is: define/run pipeline or task -> enqueue to ClearML queue -> e
 - Install/configure ClearML agents from `clients/`.
 - Run:
   ```bash
-  bash clients/install_clearml.sh
-  bash clients/launch_clearml_agent.sh
+  bash clients/clearml_agent_setup/install_clearml.sh
+  bash clients/clearml_agent_setup/launch_clearml_agent.sh
   ```
 
 3. **Globus bridge installation**
@@ -146,7 +147,7 @@ End-to-end flow is: define/run pipeline or task -> enqueue to ClearML queue -> e
   - `clearml-globus-configure-pbs-endpoint`
   - `clearml-globus-configure-slurm-endpoint`
 - Usage docs:
-  - [clearml_globus_bridge/README.md](clearml_globus_bridge/README.md)
+  - [clearml_bridges/clearml_globus_bridge/README.md](clearml_bridges/clearml_globus_bridge/README.md)
   - [examples/pipeline/globus_compute_bridge/README.md](examples/pipeline/globus_compute_bridge/README.md)
 
 ## Setup scripts
@@ -156,8 +157,8 @@ Files: [server/README.md](server/README.md), `server/ubuntu_setup.sh`.
 Typical flow (from [server/README.md](server/README.md)): provision a VM and open ports 8080/8081/8001, copy ClearML-provided `docker-compose.yml`, `docker-compose.override.yml`, and `constants.env` into `/opt/allegro/`, run `server/ubuntu_setup.sh`, then recompose via `docker-compose`.
 
 ### ClearML agent (client)
-Files: `clients/install_clearml.sh`, `clients/launch_clearml_agent.sh`, `clients/*/pbs.template`, `clients/*/clearml.conf`.
-Use `clients/install_clearml.sh` to install `clearml-agent-slurm` and `clearml-agent`, then `clients/launch_clearml_agent.sh` to start agents using PBS templates and a target queue.
+Files: `clients/clearml_agent_setup/install_clearml.sh`, `clients/clearml_agent_setup/launch_clearml_agent.sh`, `clients/clearml_agent_setup/*/pbs.template`, `clients/clearml_agent_setup/*/clearml.conf`.
+Use `clients/clearml_agent_setup/install_clearml.sh` to install `clearml-agent-slurm` and `clearml-agent`, then `clients/clearml_agent_setup/launch_clearml_agent.sh` to start agents using scheduler templates and a target queue.
 
 ### Test environment setup
 File: `examples/setup.sh`. This exports environment variables commonly used on ALCF systems (proxy, OpenBLAS, ClearML agent config).

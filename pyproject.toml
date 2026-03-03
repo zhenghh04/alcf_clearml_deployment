@@ -20,5 +20,9 @@ clearml-globus-configure-pbs-endpoint = "clearml_globus_bridge.configure_pbs_end
 clearml-globus-configure-slurm-endpoint = "clearml_globus_bridge.configure_slurm_endpoint:main"
 clearml-iri-submit = "clearml_iri_bridge.submit_iri_job:main"
 
+[tool.setuptools]
+package-dir = {"" = "clearml_bridges"}
+
 [tool.setuptools.packages.find]
+where = ["clearml_bridges"]
 include = ["clearml_globus_bridge*", "clearml_iri_bridge*"]

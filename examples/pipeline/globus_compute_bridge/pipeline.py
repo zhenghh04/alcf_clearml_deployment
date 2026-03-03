@@ -10,6 +10,9 @@ from clearml import PipelineController, Task
 REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
+BRIDGES_ROOT = REPO_ROOT / "clearml_bridges"
+if str(BRIDGES_ROOT) not in sys.path:
+    sys.path.insert(0, str(BRIDGES_ROOT))
 
 from clearml_globus_bridge.globus_compute_launcher import GlobusComputeLauncher
 
@@ -31,14 +34,14 @@ def main() -> None:
         project_name="AmSC/pipeline-globus-bridge-zhenghh",
         task_name="crux-globus",
         task_type=Task.TaskTypes.data_processing,
-        repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
+        repo="git@github.com:zhenghh04/alcf_clearml_deployment.git",
         branch="main",
         working_directory="./examples/pipeline/globus_compute_bridge",
         # Run launcher task from repo root so module mode + `packages=["-e ."]` works.
         launcher_working_directory=".",
         script_working_directory=_env_optional("GLOBUS_SCRIPT_WORKING_DIRECTORY"),
         endpoint_name="crux-compute",
-        script="/home/hzheng/clearml/alcf_clearml_evaluation/examples/pipeline/globus_compute_bridge/tasks/globus_script.sh",
+        script="/home/hzheng/clearml/alcf_clearml_deployment/examples/pipeline/globus_compute_bridge/tasks/globus_script.sh",
         script_args=None,
         binary="/bin/bash",
         tags=["globus-bridge"],  # consumed by bridge_worker.py in bridge mode
@@ -64,7 +67,7 @@ def main() -> None:
         project_name="AmSC/pipeline-globus-bridge-zhenghh",
         task_name="globus-postprocess-v2",
         task_type=Task.TaskTypes.testing,
-        repo="git@github.com:zhenghh04/alcf_clearml_evaluation.git",
+        repo="git@github.com:zhenghh04/alcf_clearml_deployment.git",
         branch="main",
         working_directory="./examples/pipeline/globus_compute_bridge",
         script="./tasks/postprocess_results.py",
