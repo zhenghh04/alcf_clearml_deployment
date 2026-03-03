@@ -1,4 +1,4 @@
-# clearml_globus_bridge
+# ClearML Globus Bridege
 
 `clearml_globus_bridge` provides ClearML-friendly wrappers for:
 - Globus Compute task submission
@@ -18,7 +18,7 @@ pip install -e .
 - `clearml-globus-submit`: submit/poll Globus Compute work
 - `clearml-globus-configure-pbs-endpoint`: generate/update PBS endpoint config templates
 - `clearml-globus-configure-slurm-endpoint`: generate/update Slurm endpoint config templates
-- `clearml-globus-token`: export `GLOBUS_COMPUTE_ACCESS_TOKEN`
+- `clearml-globus-token`: export Compute or Transfer access token (`--type compute|transfer`)
 - `clearml-globus-endpoints`: list endpoints visible to your identity
 - `clearml-globus-transfer`: run Globus Transfer data movement
 - `clearml-globus-transfer-launch`: create + enqueue a ClearML transfer task
@@ -51,7 +51,7 @@ clearml-globus-submit \
 Token-based Compute auth:
 
 ```bash
-eval "$(clearml-globus-token)"
+eval "$(clearml-globus-token --type compute)"
 clearml-globus-submit --endpoint-id "$GLOBUS_COMPUTE_ENDPOINT_ID" --token "$GLOBUS_COMPUTE_ACCESS_TOKEN"
 ```
 
@@ -79,6 +79,8 @@ clearml-globus-transfer \
 Token-based Transfer auth (no CLI login state required on worker):
 
 ```bash
+eval "$(clearml-globus-token --type transfer)"
+
 clearml-globus-transfer \
   --src-endpoint alcf#dtn_eagle \
   --dst-endpoint alcf#dtn_flare \

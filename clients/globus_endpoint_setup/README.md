@@ -12,12 +12,14 @@ Files in this folder:
 
 Get and export token (installed app):
 ```bash
-eval "$(clearml-globus-token)"
+eval "$(clearml-globus-token --type compute)"
+eval "$(clearml-globus-token --type transfer)"
 ```
 
 If login is needed:
 ```bash
-eval "$(clearml-globus-token --login-if-needed)"
+eval "$(clearml-globus-token --type compute --login-if-needed)"
+eval "$(clearml-globus-token --type transfer --login-if-needed)"
 ```
 
 Compatibility wrapper (same output):

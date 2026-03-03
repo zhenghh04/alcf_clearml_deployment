@@ -61,21 +61,6 @@ class GlobusDataMover:
         }
 
         task = Task.create(**create_kwargs)
-        task.set_environment(
-            {
-                "GLOBUS_SRC_ENDPOINT": src_endpoint,
-                "GLOBUS_DST_ENDPOINT": dst_endpoint,
-                "GLOBUS_SRC_PATH": src_path,
-                "GLOBUS_DST_PATH": dst_path,
-                "GLOBUS_LABEL": label,
-                "GLOBUS_RECURSIVE": "1" if recursive else "0",
-                "GLOBUS_SYNC_LEVEL": sync_level or "",
-                "GLOBUS_POLL_INTERVAL": str(poll_interval),
-                "GLOBUS_DRY_RUN": "1" if dry_run else "0",
-                "GLOBUS_NO_WAIT": "1" if no_wait else "0",
-                "GLOBUS_TRANSFER_ACCESS_TOKEN": token or "",
-            }
-        )
 
         task.set_parameters_as_dict(
             {
@@ -87,6 +72,13 @@ class GlobusDataMover:
                 "env:GLOBUS_DST_ENDPOINT": dst_endpoint,
                 "env:GLOBUS_SRC_PATH": src_path,
                 "env:GLOBUS_DST_PATH": dst_path,
+                "env:GLOBUS_LABEL": label,
+                "env:GLOBUS_RECURSIVE": "1" if recursive else "0",
+                "env:GLOBUS_SYNC_LEVEL": sync_level or "",
+                "env:GLOBUS_POLL_INTERVAL": str(poll_interval),
+                "env:GLOBUS_DRY_RUN": "1" if dry_run else "0",
+                "env:GLOBUS_NO_WAIT": "1" if no_wait else "0",
+                "env:GLOBUS_TRANSFER_ACCESS_TOKEN": token or "",
             }
         )
 

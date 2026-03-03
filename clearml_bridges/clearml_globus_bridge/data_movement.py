@@ -47,6 +47,57 @@ def _run_json_cmd(cmd: List[str]) -> Dict[str, Any]:
         raise RuntimeError(f"Failed to parse JSON from command: {' '.join(cmd)}") from exc
 
 
+def _dedupe_items_by_id(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    deduped: Dict[str, Dict[str, Any]] = {}
+    for item in items:
+        item_id = str(item.get("id") or "").strip()
+        if not item_id:
+            continue
+        if item_id not in deduped:
+            deduped[item_id] = item
+    return list(deduped.values())
+
+
+def _rank_match(item: Dict[str, Any], query: str) -> tuple:
+    q = query.lower()
+    display = str(item.get("display_name") or "").lower()
+    canonical = str(item.get("canonical_name") or "").lower()
+    name = str(item.get("name") or "").lower()
+    item_id = str(item.get("id") or "").lower()
+    entity_type = str(item.get("entity_type") or "").lower()
+    non_functional = bool(item.get("non_functional"))
+
+    if "mapped_collection" in entity_type:
+        entity_rank = 0
+    elif "endpoint" in entity_type:
+        entity_rank = 1
+    elif "guest_collection" in entity_type:
+        entity_rank = 2
+    else:
+        entity_rank = 3
+
+    return (
+        0 if canonical == q else 1,
+        0 if display == q else 1,
+        0 if name == q else 1,
+        0 if item_id == q else 1,
+        entity_rank,
+        1 if "guest" in entity_type else 0,
+        1 if non_functional else 0,
+        item_id,
+    )
+
+
+def _select_best_match(candidates: List[Dict[str, Any]], query: str) -> Dict[str, Any]:
+    deduped = _dedupe_items_by_id(candidates)
+    if not deduped:
+        raise RuntimeError(f"No collections found for '{query}'")
+    if len(deduped) == 1:
+        return deduped[0]
+    deduped.sort(key=lambda item: _rank_match(item, query))
+    return deduped[0]
+
+
 def _resolve_collection_id(name_or_id: str) -> str:
     if _is_uuid(name_or_id):
         return name_or_id
@@ -65,18 +116,15 @@ def _resolve_collection_id(name_or_id: str) -> str:
     except json.JSONDecodeError as exc:
         raise RuntimeError("Failed to parse collection search output.") from exc
 
-    exact_matches = []
+    matches = []
     for item in data.get("DATA", []):
         display = item.get("display_name")
         if display and display.lower() == name_or_id.lower():
-            exact_matches.append(item)
-    if len(exact_matches) == 1:
-        return str(exact_matches[0].get("id"))
-    if len(exact_matches) > 1:
-        names = [m.get("display_name") for m in exact_matches]
-        raise RuntimeError(f"Multiple collections match '{name_or_id}': {names}")
+            matches.append(item)
+    if matches:
+        return str(_select_best_match(matches, name_or_id).get("id"))
     if data.get("DATA"):
-        return str(data["DATA"][0].get("id"))
+        return str(_select_best_match(list(data["DATA"]), name_or_id).get("id"))
     raise RuntimeError(f"No collections found for '{name_or_id}'")
 
 
@@ -84,26 +132,54 @@ def _resolve_collection_id_with_sdk(client: Any, name_or_id: str) -> str:
     if _is_uuid(name_or_id):
         return name_or_id
 
-    try:
-        result = client.endpoint_search(name_or_id)
-        data = result.data if hasattr(result, "data") else {}
-    except Exception as exc:
-        raise RuntimeError(f"Failed to resolve collection name via SDK: {name_or_id}") from exc
+    items: List[Dict[str, Any]] = []
+    search_terms = [name_or_id]
+    if "#" in name_or_id:
+        left, right = name_or_id.split("#", 1)
+        search_terms.extend([right, f"{left} {right}"])
 
-    items = data.get("DATA", []) if isinstance(data, dict) else []
+    last_sdk_error: Optional[Exception] = None
+    for term in search_terms:
+        try:
+            response = client.endpoint_search(filter_fulltext=term)
+            for item in response:
+                if isinstance(item, dict):
+                    items.append(item)
+        except Exception as exc:
+            last_sdk_error = exc
+
+    lowered_query = name_or_id.lower()
+
+    def _name_candidates(item: Dict[str, Any]) -> List[str]:
+        return [
+            str(item.get("display_name") or ""),
+            str(item.get("canonical_name") or ""),
+            str(item.get("name") or ""),
+            str(item.get("id") or ""),
+        ]
+
     exact_matches = []
+    partial_matches = []
     for item in items:
-        display = item.get("display_name")
-        if display and str(display).lower() == name_or_id.lower():
+        names = [n for n in _name_candidates(item) if n]
+        if any(n.lower() == lowered_query for n in names):
             exact_matches.append(item)
-    if len(exact_matches) == 1:
-        return str(exact_matches[0].get("id"))
-    if len(exact_matches) > 1:
-        names = [m.get("display_name") for m in exact_matches]
-        raise RuntimeError(f"Multiple collections match '{name_or_id}': {names}")
-    if items:
-        return str(items[0].get("id"))
-    raise RuntimeError(f"No collections found for '{name_or_id}'")
+        elif any(lowered_query in n.lower() for n in names):
+            partial_matches.append(item)
+
+    if exact_matches:
+        return str(_select_best_match(exact_matches, name_or_id).get("id"))
+    if partial_matches:
+        return str(_select_best_match(partial_matches, name_or_id).get("id"))
+
+    # Fallback to CLI-based resolution for compatibility with aliases like alcf#dtn_eagle.
+    try:
+        return _resolve_collection_id(name_or_id)
+    except Exception as exc:
+        details = f" SDK error: {last_sdk_error}" if last_sdk_error else ""
+        raise RuntimeError(
+            f"Failed to resolve collection name via SDK/CLI: {name_or_id}.{details}"
+        ) from exc
 
 
 def _maybe_log(message: str) -> None:
@@ -143,7 +219,6 @@ def _submit_transfer_with_sdk(args: argparse.Namespace, access_token: str) -> st
     dst_endpoint = _resolve_collection_id_with_sdk(transfer_client, args.dst_endpoint)
 
     transfer_data = globus_sdk.TransferData(
-        transfer_client,
         source_endpoint=src_endpoint,
         destination_endpoint=dst_endpoint,
         label=args.label,
@@ -374,25 +449,9 @@ def launch_main() -> int:
             ("task-name", "Globus data movement"),
         ],
     )
-    task.set_environment(
-        {
-            "GLOBUS_SRC_ENDPOINT": args.src_endpoint,
-            "GLOBUS_DST_ENDPOINT": args.dst_endpoint,
-            "GLOBUS_SRC_PATH": args.src_path,
-            "GLOBUS_DST_PATH": args.dst_path,
-            "GLOBUS_LABEL": args.label,
-            "GLOBUS_RECURSIVE": "1" if args.recursive else "0",
-            "GLOBUS_SYNC_LEVEL": args.sync_level or "",
-            "GLOBUS_POLL_INTERVAL": str(args.poll_interval),
-            "GLOBUS_DRY_RUN": "1" if args.dry_run else "0",
-            "GLOBUS_NO_WAIT": "1" if args.no_wait else "0",
-            "GLOBUS_TRANSFER_ACCESS_TOKEN": args.token or "",
-        }
-    )
     Task.enqueue(task, queue_name=args.queue)
     print(f"Enqueued task id={task.id} queue={args.queue}")
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())
