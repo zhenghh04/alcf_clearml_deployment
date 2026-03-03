@@ -1,4 +1,0 @@
--e .
-clearml>=2.0
-globus-compute-sdk>=2.21.0
-requests>=2.31.0
