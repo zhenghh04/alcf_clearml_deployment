@@ -1,5 +1,9 @@
 # Setting up ClearML server
 
+This directory is for setting up and operating the ClearML server host (VM).
+Use this guide together with `server/ubuntu_setup.sh` to install prerequisites,
+configure Docker services, and bring the ClearML stack up.
+
 1. Requesting VM, have the following three ports open: 8080, 8081, 8001
 
 2. Docker compose files: ClearML will send the three files 'docker-compose.yml', 'docker-compose.override.yml', and 'constants.env' which need to be put inside /opt/allegro/"
@@ -23,7 +27,7 @@
         environment:
         - CLEARML_API_HOST=http://amsc-clearml.alcf.anl.gov:8008
         ```
-3. Run ```setup.sh``` 
+3. Run ```ubuntu_setup.sh``` 
 
 3. Recompose 
     ```bash
