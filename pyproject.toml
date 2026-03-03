@@ -20,6 +20,8 @@ clearml-globus-configure-pbs-endpoint = "clearml_globus_bridge.configure_pbs_end
 clearml-globus-configure-slurm-endpoint = "clearml_globus_bridge.configure_slurm_endpoint:main"
 clearml-globus-token = "clearml_globus_bridge.get_globus_token:main"
 clearml-globus-endpoints = "clearml_globus_bridge.list_endpoints:main"
+clearml-globus-transfer = "clearml_globus_bridge.data_movement:main"
+clearml-globus-transfer-launch = "clearml_globus_bridge.data_movement:launch_main"
 clearml-iri-submit = "clearml_iri_bridge.submit_iri_job:main"
 
 [tool.setuptools]

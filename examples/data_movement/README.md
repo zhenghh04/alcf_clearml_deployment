@@ -1,6 +1,6 @@
 # Data movement examples
 
-This folder contains a local task to move data between ALCF Globus endpoints. The transfer runs on the local machine using Globus CLI and logs status to ClearML if available.
+This folder contains data movement examples for Globus Transfer and ClearML task orchestration.
 
 ## Prereqs
 - Globus CLI installed and authenticated (`globus login`)
@@ -32,13 +32,18 @@ globus session consent 'urn:globus:auth:scope:transfer.api.globus.org:all[*https
 ## Run
 Set source/destination endpoints and paths via arguments (env vars are accepted as defaults). Endpoint names like `alcf#dtn_eagle` will be resolved automatically using `globus endpoint search` on this CLI version:
 ```bash
-python examples/data_movement/transfer_globus.py \
+clearml-globus-transfer \
   --src-endpoint alcf#dtn_eagle \
   --dst-endpoint alcf#dtn_flare \
   --src-path xxx \
   --dst-path xxx \
   --recursive \
   --poll-interval 10
+```
+
+Equivalent example script (creates a transfer task via `GlobusDataMover` and optionally enqueues with `--queue`):
+```bash
+python examples/data_movement/transfer_globus.py ...
 ```
 
 ### Direct Globus CLI example
@@ -54,16 +59,22 @@ Optional:
 - `GLOBUS_DRY_RUN=1` to print the command without executing
 - `GLOBUS_POLL_INTERVAL` polling interval in seconds for ClearML progress logging
 - `--no-wait` to return immediately after submitting the transfer
+- `--token` (or `GLOBUS_TRANSFER_ACCESS_TOKEN`) to run with token-based SDK auth instead of relying on `globus login` state
 
 ## Enqueue via ClearML
 Use `launch_transfer.py` to create and enqueue a ClearML task:
 ```bash
-python examples/data_movement/launch_transfer.py \
+clearml-globus-transfer-launch \
   --src-endpoint alcf#dtn_eagle \
   --dst-endpoint alcf#dtn_flare \
   --src-path /datasets/test.txt \
   --dst-path /datascience/test.txt \
   --queue sirius-login
+```
+
+Equivalent example script:
+```bash
+python examples/data_movement/launch_transfer.py ...
 ```
 
 

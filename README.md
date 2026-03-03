@@ -45,7 +45,7 @@ Directory snapshot:
 │   ├── iri_launcher.py
 │   └── submit_iri_job.py
 ├── examples/
-│   ├── data/
+│   ├── data_catalog/
 │   ├── data_movement/
 │   ├── experiment_tracking/
 │   ├── job_launching/
@@ -146,6 +146,10 @@ End-to-end flow is: define/run pipeline or task -> enqueue to ClearML queue -> e
   - `clearml-globus-submit`
   - `clearml-globus-configure-pbs-endpoint`
   - `clearml-globus-configure-slurm-endpoint`
+  - `clearml-globus-token`
+  - `clearml-globus-endpoints`
+  - `clearml-globus-transfer`
+  - `clearml-globus-transfer-launch`
 - Usage docs:
   - [clearml_bridges/clearml_globus_bridge/README.md](clearml_bridges/clearml_globus_bridge/README.md)
   - [examples/pipeline/globus_compute_bridge/README.md](examples/pipeline/globus_compute_bridge/README.md)

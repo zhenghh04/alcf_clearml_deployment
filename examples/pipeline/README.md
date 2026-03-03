@@ -159,8 +159,8 @@ This example runs two training steps concurrently, then aggregates them in an en
 **Files:**
 - `examples/pipeline/ensemble_pipeline/pipeline.py`
 - `examples/pipeline/ensemble_pipeline/tasks/prepare.sh`
-- `examples/pipeline/ensemble_pipeline/tasks/train_a.sh`
-- `examples/pipeline/ensemble_pipeline/tasks/train_b.sh`
+- `examples/pipeline/ensemble_pipeline/tasks/train_a.py`
+- `examples/pipeline/ensemble_pipeline/tasks/train_b.py`
 - `examples/pipeline/ensemble_pipeline/tasks/ensemble_eval.sh`
 
 **Run:**
