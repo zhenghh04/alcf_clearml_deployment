@@ -47,6 +47,14 @@ def parse_args() -> argparse.Namespace:
         "--endpoint-name",
         default=os.getenv("GLOBUS_COMPUTE_ENDPOINT_NAME", ""),
     )
+    parser.add_argument(
+        "--token",
+        default=os.getenv("GLOBUS_COMPUTE_ACCESS_TOKEN", ""),
+        help=(
+            "Globus access token for non-interactive auth. "
+            "If omitted, default SDK auth flow is used."
+        ),
+    )
     parser.add_argument("--input-value", type=int, default=7)
     parser.add_argument("--poll-interval", type=int, default=5)
     parser.add_argument("--timeout-sec", type=int, default=900)
@@ -180,14 +188,26 @@ def build_endpoint_config(
     return config
 
 
-def resolve_endpoint_id_from_name(endpoint_name: str) -> str:
+def build_compute_client(access_token: str = "") -> Any:
+    from globus_compute_sdk import Client
+
+    token = clean_str(access_token)
+    if not token:
+        return Client()
+
+    import globus_sdk
+
+    return Client(authorizer=globus_sdk.AccessTokenAuthorizer(token))
+
+
+def resolve_endpoint_id_from_name(endpoint_name: str, access_token: str = "") -> str:
     from globus_compute_sdk import Client
 
     normalized_name = clean_str(endpoint_name)
     if not normalized_name:
         return ""
 
-    client = Client()
+    client: Client = build_compute_client(access_token)
     endpoints = client.get_endpoints(role="any") or []
 
     def endpoint_name_of(item: Dict[str, Any]) -> str:
@@ -235,14 +255,14 @@ def resolve_endpoint_id_from_name(endpoint_name: str) -> str:
     )
 
 
-def resolve_endpoint_name_from_id(endpoint_id: str) -> str:
+def resolve_endpoint_name_from_id(endpoint_id: str, access_token: str = "") -> str:
     from globus_compute_sdk import Client
 
     normalized_id = clean_str(endpoint_id)
     if not normalized_id:
         return ""
 
-    client = Client()
+    client: Client = build_compute_client(access_token)
     metadata = client.get_endpoint_metadata(normalized_id) or {}
     return clean_str(
         metadata.get("display_name")
@@ -408,7 +428,9 @@ def main() -> int:
     args = parse_args()
     from clearml import Task
 
-    initial_params = vars(args)
+    initial_params = vars(args).copy()
+    if clean_str(initial_params.get("token")):
+        initial_params["token"] = "***"
     project_name = clean_str(args.project_name) or "amsc/pipeline-globus-bridge"
     task_name = clean_str(args.task_name) or "submit-globus-compute-job"
     task_type = resolve_task_type(Task, args.task_type)
@@ -423,6 +445,7 @@ def main() -> int:
 
     task_params = task.get_parameters_as_dict(cast=True)
     task_user_properties = task.get_user_properties(value_only=True)
+    access_token = clean_str(args.token)
     endpoint_id = (
         clean_str(args.endpoint_id)
         or clean_str(read_param(task_params, "endpoint_id"))
@@ -432,10 +455,10 @@ def main() -> int:
         or clean_str(read_param(task_params, "endpoint_name"))
     )
     if not endpoint_id and endpoint_name:
-        endpoint_id = resolve_endpoint_id_from_name(endpoint_name)
+        endpoint_id = resolve_endpoint_id_from_name(endpoint_name, access_token=access_token)
     if not endpoint_name and endpoint_id:
         try:
-            endpoint_name = resolve_endpoint_name_from_id(endpoint_id)
+            endpoint_name = resolve_endpoint_name_from_id(endpoint_id, access_token=access_token)
         except Exception:
             endpoint_name = ""
     if not endpoint_id:
@@ -454,6 +477,8 @@ def main() -> int:
         "Submitting work to Globus endpoint "
         f"name={endpoint_name or '<unknown>'} id={endpoint_id}"
     )
+    if access_token:
+        logger.report_text("Using token-based Globus Compute client authentication.")
 
     endpoint_config = build_endpoint_config(args, task_params, task_user_properties)
     if endpoint_config:
@@ -479,11 +504,13 @@ def main() -> int:
     validate_endpoint_config(endpoint_config, required_keys)
 
     output_value: Any = None
+    compute_client = build_compute_client(access_token)
     max_attempts = max(1, args.submit_retries + 1)
     for attempt in range(1, max_attempts + 1):
         try:
             with Executor(
                 endpoint_id=endpoint_id,
+                client=compute_client,
                 user_endpoint_config=endpoint_config or None,
             ) as executor:
                 # Avoid dill bytecode compatibility issues across local and endpoint Python versions.

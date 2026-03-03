@@ -5,9 +5,25 @@ This folder contains helper scripts and reference files for setting up and using
 Files in this folder:
 - `ssh_proxy.sh`: opens a SOCKS proxy for environments that require a login-host network hop.
 - `ssh_tunnel_clearml.sh`: opens an SSH tunnel to a named SSH target from your local SSH config.
+- `get_globus_token.sh`: compatibility wrapper to `clearml-globus-token`.
 - `compute.env.example`: example environment profile for Globus Compute submissions.
 - `transfer.env.example`: example environment profile for Globus Transfer submissions.
 - `ENDPOINT_CONFIG_JSON.md`: mapping and examples for `--endpoint-config-json`.
+
+Get and export token (installed app):
+```bash
+eval "$(clearml-globus-token)"
+```
+
+If login is needed:
+```bash
+eval "$(clearml-globus-token --login-if-needed)"
+```
+
+Compatibility wrapper (same output):
+```bash
+eval "$(bash clients/globus_endpoint_setup/get_globus_token.sh)"
+```
 
 ## 1) Prerequisites
 
