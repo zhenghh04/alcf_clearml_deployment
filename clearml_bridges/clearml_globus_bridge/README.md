@@ -6,6 +6,7 @@ It provides:
 - A launcher helper (`GlobusComputeLauncher`) to create ClearML tasks that submit work to Globus Compute.
 - A submit wrapper CLI (`clearml-globus-submit`) that executes payloads on a Globus endpoint and reports results back to ClearML.
 - A token helper CLI (`clearml-globus-token`) that exports `GLOBUS_COMPUTE_ACCESS_TOKEN`.
+- An endpoint discovery CLI (`clearml-globus-endpoints`) to list endpoints visible to your identity.
 - Endpoint config helpers for PBS/Slurm (`clearml-globus-configure-pbs-endpoint`, `clearml-globus-configure-slurm-endpoint`).
 
 ## Install
@@ -56,6 +57,14 @@ clearml-globus-submit \
 ```
 
 You can also set `GLOBUS_COMPUTE_ACCESS_TOKEN` instead of `--token`.
+
+List endpoints you can access:
+
+```bash
+clearml-globus-endpoints --role any
+clearml-globus-endpoints --role owner --json
+clearml-globus-endpoints --token "$GLOBUS_COMPUTE_ACCESS_TOKEN"
+```
 
 ### 2) Use from Python (recommended in pipelines)
 

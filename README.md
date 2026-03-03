@@ -189,9 +189,9 @@ python examples/job_launching/python/test_login.py
 - `examples/experiment_tracking/pytorch_mnist.py` ClearML experiment tracking example (MNIST).
 
 ### Datasets
-- `examples/data/test_creation.py` Create and upload a dataset to ClearML.
-- `examples/data/test_upload_link.py` Add external files to a dataset via file links.
-- `examples/data/dolma.py` Register Dolma dataset files as external links.
+- `examples/data_catalog/test_creation.py` Create and upload a dataset to ClearML.
+- `examples/data_catalog/test_upload_link.py` Add external files to a dataset via file links.
+- `examples/data_catalog/dolma.py` Register Dolma dataset files as external links.
 
 ## Notes
 - Many scripts assume ClearML server URLs, queues, and filesystem paths that are specific to ALCF environments. Adjust as needed for your site.
