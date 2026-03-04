@@ -29,7 +29,7 @@ eval "$(bash clients/globus_endpoint_setup/get_globus_token.sh)"
 
 ## 1) Prerequisites
 
-Install and verify:
+Install and verify on the system where your controller will run (for example a login node, a workflow node, or the ClearML VM/server if that is where you run pipeline/task controllers):
 
 ```bash
 python3 -m pip install -e .
@@ -37,14 +37,15 @@ python3 -m pip install globus-compute-endpoint globus-compute-sdk
 globus-compute-endpoint version
 ```
 
-You also need:
-- A reachable login host on the target HPC system.
-- Scheduler access (PBS or Slurm) on that system.
+Important: you still need a controller process running on some system. That controller is what submits Globus Compute jobs and Globus Transfer data movement tasks. In that controller Python environment, install all three pieces:
+- this repository bridge package (`pip install -e .`)
+- `globus-compute-endpoint`
+- `globus-compute-sdk`
 - Valid Globus authentication for your user.
 
 ## 2) Optional connectivity helpers to connect to ClearML server
 
-If you need proxy/tunnel access from your laptop:
+If you need proxy/tunnel access from your local development or controller host:
 
 SOCKS proxy:
 ```bash
