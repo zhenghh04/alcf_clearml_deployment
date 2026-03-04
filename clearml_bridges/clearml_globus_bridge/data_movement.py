@@ -501,14 +501,14 @@ def launch_main() -> int:
 
     from clearml import Task
 
-    task = Task.create(
-        project_name=args.project_name,
-        task_name=args.task_name,
-        task_type=Task.TaskTypes.data_processing,
-        reuse_last_task_id=False,
-        script=__file__,
-        force_single_script_file=True,
-        argparse_args=[
+    create_kwargs = {
+        "project_name": args.project_name,
+        "task_name": args.task_name,
+        "task_type": Task.TaskTypes.data_processing,
+        "reuse_last_task_id": False,
+        "script": __file__,
+        "force_single_script_file": True,
+        "argparse_args": [
             ("project-name", args.project_name),
             ("task-name", "Globus data movement"),
             ("src-endpoint", args.src_endpoint),
@@ -523,7 +523,14 @@ def launch_main() -> int:
             *((("dry-run", None),) if args.dry_run else ()),
             *((("no-wait", None),) if args.no_wait else ()),
         ],
-    )
+    }
+    try:
+        task = Task.create(**create_kwargs)
+    except TypeError as exc:
+        if "reuse_last_task_id" not in str(exc):
+            raise
+        create_kwargs.pop("reuse_last_task_id", None)
+        task = Task.create(**create_kwargs)
     Task.enqueue(task, queue_name=args.queue)
     print(f"Enqueued task id={task.id} queue={args.queue}")
     return 0

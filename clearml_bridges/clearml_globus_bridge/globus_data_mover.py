@@ -62,7 +62,13 @@ class GlobusDataMover:
             "force_single_script_file": True,
         }
 
-        task = Task.create(**create_kwargs)
+        try:
+            task = Task.create(**create_kwargs)
+        except TypeError as exc:
+            if "reuse_last_task_id" not in str(exc):
+                raise
+            create_kwargs.pop("reuse_last_task_id", None)
+            task = Task.create(**create_kwargs)
 
         task.set_parameters_as_dict(
             {
