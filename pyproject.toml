@@ -14,6 +14,12 @@ dependencies = [
   "requests>=2.31.0",
 ]
 
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "ruff>=0.11.0",
+]
+
 [project.scripts]
 clearml-globus-submit = "clearml_globus_bridge.submit_globus_job:main"
 clearml-globus-configure-pbs-endpoint = "clearml_globus_bridge.configure_pbs_endpoint:main"
@@ -30,3 +36,14 @@ package-dir = {"" = "clearml_bridges"}
 [tool.setuptools.packages.find]
 where = ["clearml_bridges"]
 include = ["clearml_globus_bridge*", "clearml_iri_bridge*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["clearml_bridges"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]

@@ -23,6 +23,21 @@ pip install -e .
 - `clearml-globus-transfer`: run Globus Transfer data movement
 - `clearml-globus-transfer-launch`: create + enqueue a ClearML transfer task
 
+## Configuration (Env Vars)
+
+| Variable | Used by | Purpose |
+|---|---|---|
+| `GLOBUS_COMPUTE_ENDPOINT_ID` | `clearml-globus-submit` | Target Globus Compute endpoint ID |
+| `GLOBUS_COMPUTE_ENDPOINT_NAME` | `clearml-globus-submit` | Target endpoint name (resolved to ID) |
+| `GLOBUS_COMPUTE_ACCESS_TOKEN` | `clearml-globus-submit`, `clearml-globus-endpoints` | Non-interactive Compute auth token |
+| `GLOBUS_TRANSFER_ACCESS_TOKEN` | `clearml-globus-transfer` | Non-interactive Transfer auth token |
+| `GLOBUS_SRC_ENDPOINT`, `GLOBUS_DST_ENDPOINT` | transfer CLIs | Source/destination collection/endpoint |
+| `GLOBUS_SRC_PATH`, `GLOBUS_DST_PATH` | transfer CLIs | Source/destination path |
+| `GLOBUS_SYNC_LEVEL` | transfer CLIs | Transfer sync behavior |
+| `GLOBUS_POLL_INTERVAL` | transfer CLIs | Poll interval (seconds) |
+
+CLI args override environment variables.
+
 ## Globus Compute (CLI)
 
 Submit default payload:

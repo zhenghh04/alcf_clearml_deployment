@@ -5,7 +5,7 @@ This folder contains examples for creating, uploading, and downloading ClearML D
 ClearML stores dataset artifacts on the server-side file server configured in your `clearml.conf` (`files_server`). Make sure your client points to the correct fileserver URL so uploads and downloads resolve properly.
 
 - `test_creation.py` Create and upload a small dataset.
-- `test_creation_large.py` Create and upload a larger dataset.
+- `cifar10.py` Download a local copy of cifar10 and upload it to the file server.
 - `test_upload_link.py` Register external files via `file://` links without uploading to the files server. 
 - `test_download.py` Download a dataset from the ClearML catalog.
 - `dolma.py` Register Dolma dataset files as external links.

@@ -11,18 +11,22 @@ This repository contains how we deploy ClearML in ALCF, with all the setup scrip
 - [Client setup guide](clients/README.md)
 - [Globus bridge package guide](clearml_bridges/clearml_globus_bridge/README.md)
 - [Globus endpoint notes](clients/globus_endpoint_setup/README.md)
-- [Examples guide](examples/)
+- [Examples guide](examples/README.md)
+- [Compute guide](docs/compute.md)
+- [Transfer guide](docs/transfer.md)
+- [Troubleshooting guide](docs/troubleshooting.md)
 
 ## Repository layout
 - [README.md](README.md): Top-level navigation and setup flow.
 - `server/`: ClearML server setup and Globus auth connector.
 - `clients/`: Client-side setup split into agent setup and Globus endpoint setup helpers.
     - `clients/globus_endpoint_setup/`: Endpoint configuration references.
-    - `clients/clearml_endpoint_setup/`: ClearML agents (PBS/Slurm) setup 
+    - `clients/clearml_agent_setup/`: ClearML agents (PBS/Slurm) setup 
 - `clearml_bridges/` ClearML bridges for HPC job launcher
     - `clearml_bridges/clearml_globus_bridge/`: Globus bridge package and endpoint config tools.
     - `clearml_bridges/clearml_iri_bridge/`: IRI bridge package and submit wrapper.
-- `examples/`: Runnable examples for job launching, pipelines, data, and tracking.- `pyproject.toml`, `requirements.txt`: Package/dependency definitions.
+- `examples/`: Runnable examples for job launching, pipelines, data, and tracking.
+- `pyproject.toml`, `requirements.txt`: Package/dependency definitions.
 
 Directory snapshot:
 ```text
@@ -48,6 +52,7 @@ Directory snapshot:
 │   ├── iri_launcher.py
 │   └── submit_iri_job.py
 ├── examples/
+│   ├── README.md
 │   ├── data_catalog/
 │   ├── data_movement/
 │   ├── experiment_tracking/
