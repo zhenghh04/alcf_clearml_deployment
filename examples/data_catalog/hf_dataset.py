@@ -28,4 +28,5 @@ ds = Dataset.create(
     description=f"External links pinned to HF commit {pinned_revision}",
 )
 ds.add_external_files(source_url=urls[0:4], max_workers=1)
+ds.upload(max_workers=1) 
 ds.finalize()
