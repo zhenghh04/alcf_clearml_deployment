@@ -447,6 +447,17 @@ def launch_main() -> int:
         argparse_args=[
             ("project-name", args.project_name),
             ("task-name", "Globus data movement"),
+            ("src-endpoint", args.src_endpoint),
+            ("dst-endpoint", args.dst_endpoint),
+            ("src-path", args.src_path),
+            ("dst-path", args.dst_path),
+            ("label", args.label),
+            ("poll-interval", str(args.poll_interval)),
+            ("token", args.token or ""),
+            *((("sync-level", args.sync_level),) if args.sync_level else ()),
+            *((("recursive", None),) if args.recursive else ()),
+            *((("dry-run", None),) if args.dry_run else ()),
+            *((("no-wait", None),) if args.no_wait else ()),
         ],
     )
     Task.enqueue(task, queue_name=args.queue)
