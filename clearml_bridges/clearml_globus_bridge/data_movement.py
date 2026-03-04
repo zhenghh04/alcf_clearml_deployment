@@ -339,19 +339,82 @@ def _parse_transfer_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def _flatten_params(params: Dict[str, Any], prefix: str = "") -> Dict[str, Any]:
+    flattened: Dict[str, Any] = {}
+    for key, value in params.items():
+        full_key = f"{prefix}/{key}" if prefix else str(key)
+        if isinstance(value, dict):
+            flattened.update(_flatten_params(value, full_key))
+        else:
+            flattened[full_key] = value
+    return flattened
+
+
+def _read_param_from_flat(flat: Dict[str, Any], name: str) -> str:
+    candidate_suffixes = [
+        f"/{name}",
+        f"/{name.replace('_', '-')}",
+        f"/{name.replace('-', '_')}",
+        f"/--{name.replace('_', '-')}",
+        f"/env:GLOBUS_{name.upper()}",
+        f"/env:GLOBUS_{name.upper().replace('-', '_')}",
+    ]
+    for key, value in flat.items():
+        for suffix in candidate_suffixes:
+            if key.endswith(suffix) and value not in (None, ""):
+                return str(value)
+    return ""
+
+
+def _hydrate_args_from_task(args: argparse.Namespace, task: Any) -> None:
+    try:
+        params = task.get_parameters_as_dict(cast=True) or {}
+    except Exception:
+        return
+    flat = _flatten_params(params)
+
+    mapping = {
+        "src_endpoint": "src_endpoint",
+        "dst_endpoint": "dst_endpoint",
+        "src_path": "src_path",
+        "dst_path": "dst_path",
+        "label": "label",
+        "sync_level": "sync_level",
+        "poll_interval": "poll_interval",
+        "token": "transfer_access_token",
+    }
+    for arg_name, param_name in mapping.items():
+        current = getattr(args, arg_name, None)
+        if current not in (None, "", 0):
+            continue
+        val = _read_param_from_flat(flat, param_name)
+        if val != "":
+            if arg_name == "poll_interval":
+                try:
+                    setattr(args, arg_name, int(val))
+                except Exception:
+                    pass
+            else:
+                setattr(args, arg_name, val)
+
+
 def main() -> int:
     args = _parse_transfer_args()
+    task = None
+    try:
+        from clearml import Task
+
+        task = Task.init(project_name=args.project_name, task_name=args.task_name)
+    except Exception:
+        task = None
+
+    if task is not None:
+        _hydrate_args_from_task(args, task)
+
     if not all([args.src_endpoint, args.dst_endpoint, args.src_path, args.dst_path]):
         raise ValueError(
             "Missing required args: --src-endpoint, --dst-endpoint, --src-path, --dst-path"
         )
-
-    try:
-        from clearml import Task
-
-        Task.init(project_name=args.project_name, task_name=args.task_name)
-    except Exception:
-        pass
 
     using_token = bool(str(args.token).strip())
     if using_token:
@@ -442,8 +505,9 @@ def launch_main() -> int:
         project_name=args.project_name,
         task_name=args.task_name,
         task_type=Task.TaskTypes.data_processing,
-        module="clearml_globus_bridge.data_movement",
-        packages=["-e ."],
+        reuse_last_task_id=False,
+        script=__file__,
+        force_single_script_file=True,
         argparse_args=[
             ("project-name", args.project_name),
             ("task-name", "Globus data movement"),

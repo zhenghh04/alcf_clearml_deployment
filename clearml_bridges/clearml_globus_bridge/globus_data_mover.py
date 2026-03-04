@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 from clearml import Task
@@ -22,7 +23,6 @@ class GlobusDataMover:
         dry_run: bool = False,
         no_wait: bool = False,
         token: Optional[str] = None,
-        launcher_module: str = "clearml_globus_bridge.data_movement",
         launcher_binary: str = "python",
         user_properties: Optional[Dict[str, Any]] = None,
         tags: Optional[list[str]] = None,
@@ -56,8 +56,10 @@ class GlobusDataMover:
             "task_name": task_name,
             "task_type": task_type,
             "binary": launcher_binary,
+            "reuse_last_task_id": False,
             "argparse_args": argparse_args,
-            "module": launcher_module,
+            "script": str(Path(__file__).with_name("data_movement.py")),
+            "force_single_script_file": True,
         }
 
         task = Task.create(**create_kwargs)
