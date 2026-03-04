@@ -2,7 +2,7 @@ from clearml import Dataset, Task
 from huggingface_hub import HfApi
 task = Task.init(project_name="AuroraGPT", task_name="register_hf_dataset")
 task.execute_remotely(queue_name="crux-services", exit_process=True)
-repo_id = "allenai/olmo-mix-1124"
+repo_id = "allenai/c4"
 revision = "main"  # replace with commit SHA once resolved
 
 api = HfApi()
@@ -18,6 +18,8 @@ urls = [
     for path in files
     if path.endswith(wanted_ext)
 ]
+
+print(f"Adding {len(urls)} files to ClearML dataset")
 
 ds = Dataset.create(
     dataset_project="AmSC",
