@@ -23,7 +23,7 @@ print(f"Adding {len(urls)} files to ClearML dataset")
 
 ds = Dataset.create(
     dataset_project="AmSC",
-    dataset_name="allenai-olmo-mix-1124",
+    dataset_name="allenai-c4",
     dataset_version="1.0.0",
     description=f"External links pinned to HF commit {pinned_revision}",
 )
