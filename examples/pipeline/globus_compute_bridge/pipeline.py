@@ -24,8 +24,9 @@ def main() -> None:
         branch="main",
         working_directory="./examples/pipeline/globus_compute_bridge",
         endpoint_name="crux-compute",
-        script="tasks/globus_script.sh",
+        script=str(REPO_ROOT / "examples" / "pipeline" / "globus_compute_bridge" / "tasks" / "globus_script.sh"),
         binary="/bin/bash",
+        clone_repo=False,
         tags=["globus-bridge"],
     )
 
