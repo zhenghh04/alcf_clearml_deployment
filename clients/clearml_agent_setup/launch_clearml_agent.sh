@@ -121,6 +121,14 @@ UNIT
 
 install_user_service() {
   command -v systemctl >/dev/null
+  if ! systemctl --user show-environment >/dev/null 2>&1; then
+    echo "ERROR: user systemd bus is unavailable in this session." >&2
+    echo "Try one of the following:" >&2
+    echo "  1) Use system-level service: $0 --install-system" >&2
+    echo "  2) Enable lingering and re-login, then retry --install-service:" >&2
+    echo "     sudo loginctl enable-linger ${USER}" >&2
+    exit 1
+  fi
   write_service_unit "${USER_SERVICE_PATH}" "default.target"
   systemctl --user daemon-reload
   systemctl --user enable --now "${SERVICE_NAME}"
