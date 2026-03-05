@@ -27,7 +27,7 @@ def main() -> None:
 
     task = Task.init(
         project_name="AmSC",
-        task_name="Pattern B: runner",
+        task_name="sub task runner",
         task_type=Task.TaskTypes.training,
     )
     logger = task.get_logger()
@@ -47,7 +47,7 @@ def main() -> None:
         node_group = groups[idx]
         cmd = [
             sys.executable,
-            "examples/job_launching/pattern_b/subtask_worker.py",
+            "examples/job_launching/ensamble/subtask_worker.py",
             "--task-index",
             str(idx),
             "--nodes",
