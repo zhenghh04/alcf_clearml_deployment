@@ -19,6 +19,21 @@ def chunk_nodes(nodes: list[str], group_size: int) -> list[list[str]]:
     return [nodes[i : i + group_size] for i in range(0, len(nodes), group_size)]
 
 
+def subtask_env(parent_task_id: str) -> dict[str, str]:
+    env = dict(os.environ)
+    # Make sure child process creates a new ClearML task instead of attaching to parent.
+    for key in (
+        "CLEARML_TASK_ID",
+        "TRAINS_TASK_ID",
+        "CLEARML_PROC_MASTER_ID",
+        "CLEARML_LOG_TASK_TO_BACKEND",
+        "TRAINS_PROC_MASTER_ID",
+    ):
+        env.pop(key, None)
+    env["CLEARML_PARENT_TASK_ID"] = parent_task_id
+    return env
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--tasks", type=int, default=3)
@@ -54,7 +69,7 @@ def main() -> None:
             ",".join(node_group),
         ]
         logger.report_text(f"Launching subtask {idx} on nodes {node_group}")
-        procs.append(subprocess.Popen(cmd))
+        procs.append(subprocess.Popen(cmd, env=subtask_env(task.id)))
 
     exit_codes = [proc.wait() for proc in procs]
     logger.report_text(f"Subtask exit codes: {exit_codes}")
