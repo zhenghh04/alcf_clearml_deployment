@@ -60,7 +60,7 @@ def main() -> None:
         add_pipeline_tags=True,
     )
     pipe.add_step(
-        name="globus_submit",
+        name="globus_compute_on_crux",
         base_task_id=submit_task.id,
         execution_queue="crux-services",
     )
@@ -68,7 +68,7 @@ def main() -> None:
         name="postprocess",
         base_task_id=postprocess_task.id,
         execution_queue="crux-services",
-        parents=["globus_submit"],
+        parents=["globus_compute_on_crux"],
     )
 
     pipe.start(queue="crux-services")
