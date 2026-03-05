@@ -13,7 +13,11 @@ USER_SERVICE_DIR="${HOME}/.config/systemd/user"
 USER_SERVICE_PATH="${USER_SERVICE_DIR}/${SERVICE_NAME}"
 SYSTEM_SERVICE_PATH="/etc/systemd/system/${SERVICE_NAME}"
 
+export OMP_NUM_THREADS=1
+export MKL_NUM_THREADS=1
 export OPENBLAS_NUM_THREADS=1
+export NUMEXPR_NUM_THREADS=1
+export VECLIB_MAXIMUM_THREADS=1
 
 if [[ ! -d "${CLIENT_DIR}" ]]; then
   echo "ERROR: client directory not found: ${CLIENT_DIR}" >&2
