@@ -24,23 +24,7 @@ pip install -e .
 - `clearml-globus-transfer`: run Globus Transfer data movement
 - `clearml-globus-transfer-launch`: create + enqueue a ClearML transfer task
 
-## Configuration (Env Vars)
-
-| Variable | Used by | Purpose |
-|---|---|---|
-| `GLOBUS_COMPUTE_ENDPOINT_ID` | `clearml-globus-submit` | Target Globus Compute endpoint ID |
-| `GLOBUS_COMPUTE_ENDPOINT_NAME` | `clearml-globus-submit` | Target endpoint name (resolved to ID) |
-| `GLOBUS_COMPUTE_ACCESS_TOKEN` | `clearml-globus-submit`, `clearml-globus-endpoints` | Non-interactive Compute auth token |
-| `GLOBUS_TRANSFER_ACCESS_TOKEN` | `clearml-globus-transfer` | Non-interactive Transfer auth token |
-| `GLOBUS_TRANSFER_ACCESS_TOKEN_ENV` | transfer CLIs | Env var name containing Transfer token (default: `GLOBUS_TRANSFER_ACCESS_TOKEN`) |
-| `GLOBUS_SRC_ENDPOINT`, `GLOBUS_DST_ENDPOINT` | transfer CLIs | Source/destination collection/endpoint |
-| `GLOBUS_SRC_PATH`, `GLOBUS_DST_PATH` | transfer CLIs | Source/destination path |
-| `GLOBUS_SYNC_LEVEL` | transfer CLIs | Transfer sync behavior |
-| `GLOBUS_POLL_INTERVAL` | transfer CLIs | Poll interval (seconds) |
-
-CLI args override environment variables.
-
-## Globus Compute (CLI)
+## ClearML Globus Compute (CLI)
 
 Submit default payload:
 
@@ -83,33 +67,18 @@ clearml-globus-endpoints --token "$GLOBUS_COMPUTE_ACCESS_TOKEN"
 Queue-based auth on an agent:
 
 ```bash
-clearml-globus-auth \
-  --type transfer \
-  --queue crux-services \
-  --project-name AmSC \
-  --task-name "Globus auth on crux-services" \
-  --follow
+clearml-globus-auth --type transfer --queue crux-services
 ```
 
-Then open the queued task logs and complete the URL/device-code login flow in your local browser.
+## ClearML Globus Transfer (CLI)
 
-If the worker has no interactive stdin, complete transfer auth in two steps:
+Recommended: for queue/agent workflows, authenticate workers with:
 
 ```bash
-# Step 1: run once to get URL from task logs
-clearml-globus-auth --type transfer --queue crux-services --follow
-
-# Step 2: rerun with one-time Authorization Code copied from browser
-clearml-globus-auth --type transfer --queue crux-services --auth-code "<AUTH_CODE>" --follow
+clearml-globus-auth --queue <QUEUE_NAME>
 ```
 
-Single-command helper (runs both steps and prompts locally for auth code):
-
-```bash
-clearml-globus-auth --type transfer --queue crux-services --one-shot
-```
-
-## Globus Transfer (CLI)
+Token-based transfer options are still supported, but worker auth via `clearml-globus-auth` is the preferred setup.
 
 Run transfer directly:
 
@@ -132,7 +101,7 @@ clearml-globus-transfer \
   --dst-endpoint alcf#dtn_flare \
   --src-path /datasets/test.txt \
   --dst-path /datascience/test.txt \
-  --token-env-var GLOBUS_TRANSFER_ACCESS_TOKEN
+  --token $GLOBUS_TRANSFER_ACCESS_TOKEN
 ```
 
 Create and enqueue transfer task:
@@ -143,7 +112,7 @@ clearml-globus-transfer-launch \
   --dst-endpoint alcf#dtn_flare \
   --src-path /datasets/test.txt \
   --dst-path /datascience/test.txt \
-  --token-env-var GLOBUS_TRANSFER_ACCESS_TOKEN \
+  --token $GLOBUS_TRANSFER_ACCESS_TOKEN \
   --queue sirius-login
 ```
 
@@ -185,8 +154,7 @@ transfer_task = mover.create(
     dst_endpoint="alcf#dtn_flare",
     src_path="/datasets/test.txt",
     dst_path="/datascience/test.txt",
-    recursive=True,
-    token_env_var="GLOBUS_TRANSFER_ACCESS_TOKEN",
+    recursive=True
 )
 ```
 

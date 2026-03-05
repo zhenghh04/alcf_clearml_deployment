@@ -427,7 +427,11 @@ def main() -> int:
 
     using_token = bool(access_token)
     if using_token:
-        _maybe_log("Using token-based SDK auth for Globus Transfer.")
+        _maybe_log(
+            "Using token-based SDK auth for Globus Transfer. "
+            "Recommended for queue workflows: run 'clearml-globus-auth --queue <QUEUE_NAME>' "
+            "and use CLI login state on the worker."
+        )
     else:
         cmd = _build_transfer_command(args)
         _maybe_log(f"Running Globus transfer command: {' '.join(map(shlex.quote, cmd))}")
@@ -542,6 +546,12 @@ def launch_main() -> int:
         task = Task.create(**create_kwargs)
     Task.enqueue(task, queue_name=args.queue)
     print(f"Enqueued task id={task.id} queue={args.queue}")
+    try:
+        url = task.get_output_log_web_page()
+    except Exception:
+        url = ""
+    if url:
+        print(f"ClearML results page: {url}")
     return 0
 
 if __name__ == "__main__":
