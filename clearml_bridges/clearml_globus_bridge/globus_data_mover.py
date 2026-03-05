@@ -23,6 +23,7 @@ class GlobusDataMover:
         dry_run: bool = False,
         no_wait: bool = False,
         token: Optional[str] = None,
+        token_env_var: str = "GLOBUS_TRANSFER_ACCESS_TOKEN",
         launcher_binary: str = "python",
         user_properties: Optional[Dict[str, Any]] = None,
         tags: Optional[list[str]] = None,
@@ -42,6 +43,10 @@ class GlobusDataMover:
             ("label", label),
             ("poll-interval", str(poll_interval)),
         ]
+        if token:
+            argparse_args.append(("token", token))
+        else:
+            argparse_args.append(("token-env-var", token_env_var))
         if recursive:
             argparse_args.append(("recursive", None))
         if sync_level:
@@ -86,9 +91,11 @@ class GlobusDataMover:
                 "env:GLOBUS_POLL_INTERVAL": str(poll_interval),
                 "env:GLOBUS_DRY_RUN": "1" if dry_run else "0",
                 "env:GLOBUS_NO_WAIT": "1" if no_wait else "0",
-                "env:GLOBUS_TRANSFER_ACCESS_TOKEN": token or "",
+                "env:GLOBUS_TRANSFER_ACCESS_TOKEN_ENV": token_env_var,
             }
         )
+        if token:
+            task.set_parameters_as_dict({"env:GLOBUS_TRANSFER_ACCESS_TOKEN": token})
 
         if user_properties:
             filtered_user_properties = {k: v for k, v in user_properties.items() if v is not None}

@@ -331,8 +331,13 @@ def _parse_transfer_args() -> argparse.Namespace:
     parser.add_argument("--dry-run", action="store_true", default=_env_bool("GLOBUS_DRY_RUN", False))
     parser.add_argument(
         "--token",
-        default=_env("GLOBUS_TRANSFER_ACCESS_TOKEN", _env("GLOBUS_ACCESS_TOKEN", "")),
+        default="",
         help="Globus Transfer access token; when set, transfer uses SDK auth instead of CLI login state.",
+    )
+    parser.add_argument(
+        "--token-env-var",
+        default=_env("GLOBUS_TRANSFER_ACCESS_TOKEN_ENV", "GLOBUS_TRANSFER_ACCESS_TOKEN"),
+        help="Environment variable name to read Transfer token from when --token is not provided.",
     )
     parser.add_argument("--project-name", default=_env("CLEARML_PROJECT_NAME", "AmSC"))
     parser.add_argument("--task-name", default=_env("CLEARML_TASK_NAME", "Globus data movement"))
@@ -381,7 +386,7 @@ def _hydrate_args_from_task(args: argparse.Namespace, task: Any) -> None:
         "label": "label",
         "sync_level": "sync_level",
         "poll_interval": "poll_interval",
-        "token": "transfer_access_token",
+        "token_env_var": "transfer_access_token_env",
     }
     for arg_name, param_name in mapping.items():
         current = getattr(args, arg_name, None)
@@ -416,7 +421,11 @@ def main() -> int:
             "Missing required args: --src-endpoint, --dst-endpoint, --src-path, --dst-path"
         )
 
-    using_token = bool(str(args.token).strip())
+    access_token = str(args.token or "").strip()
+    if not access_token and str(args.token_env_var or "").strip():
+        access_token = str(_env(str(args.token_env_var).strip(), "") or "").strip()
+
+    using_token = bool(access_token)
     if using_token:
         _maybe_log("Using token-based SDK auth for Globus Transfer.")
     else:
@@ -436,7 +445,7 @@ def main() -> int:
     start = time.time()
     if using_token:
         try:
-            task_id = _submit_transfer_with_sdk(args, str(args.token).strip())
+            task_id = _submit_transfer_with_sdk(args, access_token)
         except Exception as exc:
             _maybe_log(f"Globus transfer submit failed in SDK mode: {exc}")
             return 1
@@ -455,7 +464,7 @@ def main() -> int:
             _maybe_log("Submitted transfer; not waiting for completion.")
         else:
             if using_token:
-                status = _poll_transfer_with_sdk(task_id, args.poll_interval, str(args.token).strip())
+                status = _poll_transfer_with_sdk(task_id, args.poll_interval, access_token)
             else:
                 status = _poll_transfer(task_id, args.poll_interval)
 
@@ -479,9 +488,9 @@ def _parse_launch_args() -> argparse.Namespace:
     parser.add_argument("--dry-run", action="store_true", default=_env_bool("GLOBUS_DRY_RUN", False))
     parser.add_argument("--no-wait", action="store_true", default=_env_bool("GLOBUS_NO_WAIT", False))
     parser.add_argument(
-        "--token",
-        default=_env("GLOBUS_TRANSFER_ACCESS_TOKEN", _env("GLOBUS_ACCESS_TOKEN", "")),
-        help="Globus Transfer access token passed to worker task.",
+        "--token-env-var",
+        default=_env("GLOBUS_TRANSFER_ACCESS_TOKEN_ENV", "GLOBUS_TRANSFER_ACCESS_TOKEN"),
+        help="Env var name available on the worker that contains the Transfer token.",
     )
     parser.add_argument("--queue", default=_env("QUEUE", "default"))
     parser.add_argument("--project-name", default=_env("CLEARML_PROJECT_NAME", "AmSC"))
@@ -517,7 +526,7 @@ def launch_main() -> int:
             ("dst-path", args.dst_path),
             ("label", args.label),
             ("poll-interval", str(args.poll_interval)),
-            ("token", args.token or ""),
+            ("token-env-var", args.token_env_var),
             *((("sync-level", args.sync_level),) if args.sync_level else ()),
             *((("recursive", None),) if args.recursive else ()),
             *((("dry-run", None),) if args.dry_run else ()),

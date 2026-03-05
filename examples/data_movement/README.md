@@ -59,7 +59,8 @@ Optional:
 - `GLOBUS_DRY_RUN=1` to print the command without executing
 - `GLOBUS_POLL_INTERVAL` polling interval in seconds for ClearML progress logging
 - `--no-wait` to return immediately after submitting the transfer
-- `--token` (or `GLOBUS_TRANSFER_ACCESS_TOKEN`) to run with token-based SDK auth instead of relying on `globus login` state
+- `--token` for direct runs only (will be visible in ClearML task params if passed as an arg)
+- `--token-env-var` (default `GLOBUS_TRANSFER_ACCESS_TOKEN`) for queue-safe token lookup on the worker
 
 ## Enqueue via ClearML
 Use `launch_transfer.py` to create and enqueue a ClearML task:
@@ -69,6 +70,7 @@ clearml-globus-transfer-launch \
   --dst-endpoint alcf#dtn_flare \
   --src-path /datasets/test.txt \
   --dst-path /datascience/test.txt \
+  --token-env-var GLOBUS_TRANSFER_ACCESS_TOKEN \
   --queue sirius-login
 ```
 
