@@ -1,5 +1,6 @@
 import json
 import os
+from pathlib import Path
 from typing import Any, Dict, Optional, Sequence
 
 from clearml import Task
@@ -28,11 +29,12 @@ class GlobusComputeLauncher:
         script: Optional[str] = None,
         binary: str = "/bin/bash",
         launcher_module: str = "clearml_globus_bridge.submit_globus_job",
-        launcher_script: Optional[str] = None,
+        launcher_script: Optional[str] = str(Path(__file__).with_name("submit_globus_job.py")),
         launcher_binary: str = "python",
         launcher_working_directory: Optional[str] = None,
         script_working_directory: Optional[str] = None,
-        clone_repo_for_script: bool = True,
+        clone_repo: bool = True,
+        clone_repo_for_script: Optional[bool] = None,
         input_value: int = 7,
         poll_interval: int = 5,
         timeout_sec: int = 900,
@@ -42,12 +44,14 @@ class GlobusComputeLauncher:
         user_properties: Optional[Dict[str, Any]] = None,
         tags: Optional[list[str]] = None,
     ) -> Task:
-        selected_endpoint_id = endpoint_id or os.getenv("GLOBUS_COMPUTE_ENDPOINT_ID")
-        selected_endpoint_name = endpoint_name or os.getenv("GLOBUS_COMPUTE_ENDPOINT_NAME")
+        effective_clone_repo = (
+            clone_repo if clone_repo_for_script is None else clone_repo_for_script
+        )
+        selected_endpoint_id = (endpoint_id or "").strip() or None
+        selected_endpoint_name = (endpoint_name or "").strip() or None
         if not selected_endpoint_id and not selected_endpoint_name:
             raise ValueError(
-                "Endpoint is required. Pass endpoint_id or endpoint_name "
-                "(or export GLOBUS_COMPUTE_ENDPOINT_ID / GLOBUS_COMPUTE_ENDPOINT_NAME)."
+                "Endpoint is required. Pass endpoint_id or endpoint_name."
             )
         argparse_args = [
             ("project-name", project_name),
@@ -68,11 +72,12 @@ class GlobusComputeLauncher:
         if script:
             argparse_args.append(("script", script))
             argparse_args.append(("binary", binary))
-            if script_working_directory:
-                argparse_args.append(("working-directory", script_working_directory))
+            effective_script_working_directory = script_working_directory or working_directory
+            if effective_script_working_directory:
+                argparse_args.append(("working-directory", effective_script_working_directory))
             if script_args:
                 argparse_args.append(("script-args-json", json.dumps(list(script_args))))
-            if clone_repo_for_script and not os.path.isabs(script):
+            if effective_clone_repo and not os.path.isabs(script):
                 argparse_args.append(("clone-repo", "true"))
                 argparse_args.append(("repo-url", repo))
                 argparse_args.append(("repo-branch", branch))
@@ -90,6 +95,7 @@ class GlobusComputeLauncher:
         }
         if launcher_script:
             create_kwargs["script"] = launcher_script
+            create_kwargs["force_single_script_file"] = True
         else:
             create_kwargs["module"] = launcher_module
             # Ensure clearml_globus_bridge package is importable on the agent.
