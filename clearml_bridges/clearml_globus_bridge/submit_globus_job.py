@@ -28,23 +28,23 @@ def parse_bool(value: Any, default: bool = False) -> bool:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--project-name",
+        "--project-name", "--project_name",
         default=os.getenv("CLEARML_PROJECT_NAME", "amsc/pipeline-globus-bridge"),
     )
     parser.add_argument(
-        "--task-name",
+        "--task-name", "--task_name",
         default=os.getenv("CLEARML_TASK_NAME", "submit-globus-compute-job"),
     )
     parser.add_argument(
-        "--task-type",
+        "--task-type", "--task_type",
         default=os.getenv("CLEARML_TASK_TYPE", "data_processing"),
     )
     parser.add_argument(
-        "--endpoint-id",
+        "--endpoint-id", "--endpoint_id",
         default=os.getenv("GLOBUS_COMPUTE_ENDPOINT_ID", ""),
     )
     parser.add_argument(
-        "--endpoint-name",
+        "--endpoint-name", "--endpoint_name",
         default=os.getenv("GLOBUS_COMPUTE_ENDPOINT_NAME", ""),
     )
     parser.add_argument(
@@ -55,38 +55,38 @@ def parse_args() -> argparse.Namespace:
             "If omitted, default SDK auth flow is used."
         ),
     )
-    parser.add_argument("--input-value", type=int, default=7)
-    parser.add_argument("--poll-interval", type=int, default=5)
-    parser.add_argument("--timeout-sec", type=int, default=900)
+    parser.add_argument("--input-value", "--input_value", type=int, default=7)
+    parser.add_argument("--poll-interval", "--poll_interval", type=int, default=5)
+    parser.add_argument("--timeout-sec", "--timeout_sec", type=int, default=900)
     parser.add_argument(
-        "--report-wait-metrics",
+        "--report-wait-metrics", "--report_wait_metrics",
         default=os.getenv("GLOBUS_REPORT_WAIT_METRICS", "0"),
         help="Enable per-poll wait metric reporting to ClearML (default: disabled).",
     )
-    parser.add_argument("--artifact-path", default="globus_result.json")
-    parser.add_argument("--endpoint-config-json", default="")
+    parser.add_argument("--artifact-path", "--artifact_path", default="globus_result.json")
+    parser.add_argument("--endpoint-config-json", "--endpoint_config_json", default="")
     parser.add_argument("--script", default="")
-    parser.add_argument("--script-args-json", default="")
+    parser.add_argument("--script-args-json", "--script_args_json", default="")
     parser.add_argument("--binary", default="")
-    parser.add_argument("--working-directory", default="")
-    parser.add_argument("--repo-url", default="")
-    parser.add_argument("--repo-branch", default="")
-    parser.add_argument("--repo-working-directory", default="")
-    parser.add_argument("--clone-repo", default="")
+    parser.add_argument("--working-directory", "--working_directory", default="")
+    parser.add_argument("--repo-url", "--repo_url", default="")
+    parser.add_argument("--repo-branch", "--repo_branch", default="")
+    parser.add_argument("--repo-working-directory", "--repo_working_directory", default="")
+    parser.add_argument("--clone-repo", "--clone_repo", default="")
     parser.add_argument(
-        "--submit-retries",
+        "--submit-retries", "--submit_retries",
         type=int,
         default=int(os.getenv("GLOBUS_SUBMIT_RETRIES", "2")),
         help="Retry count for transient submission failures (default: 2).",
     )
     parser.add_argument(
-        "--retry-backoff-sec",
+        "--retry-backoff-sec", "--retry_backoff_sec",
         type=int,
         default=int(os.getenv("GLOBUS_RETRY_BACKOFF_SEC", "5")),
         help="Base backoff in seconds between submit retries (default: 5).",
     )
     parser.add_argument(
-        "--required-endpoint-keys",
+        "--required-endpoint-keys", "--required_endpoint_keys",
         default=os.getenv("GLOBUS_REQUIRED_ENDPOINT_KEYS", ""),
         help="Comma-separated required keys in endpoint config (example: filesystems).",
     )

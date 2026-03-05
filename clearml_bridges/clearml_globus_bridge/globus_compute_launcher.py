@@ -54,33 +54,33 @@ class GlobusComputeLauncher:
                 "Endpoint is required. Pass endpoint_id or endpoint_name."
             )
         argparse_args = [
-            ("project-name", project_name),
-            ("task-name", task_name),
-            ("task-type", self._task_type_to_cli_value(task_type)),
-            ("input-value", str(input_value)),
-            ("poll-interval", str(poll_interval)),
-            ("timeout-sec", str(timeout_sec)),
-            ("artifact-path", artifact_path),
+            ("project_name", project_name),
+            ("task_name", task_name),
+            ("task_type", self._task_type_to_cli_value(task_type)),
+            ("input_value", str(input_value)),
+            ("poll_interval", str(poll_interval)),
+            ("timeout_sec", str(timeout_sec)),
+            ("artifact_path", artifact_path),
         ]
         if selected_endpoint_id:
-            argparse_args.append(("endpoint-id", selected_endpoint_id))
+            argparse_args.append(("endpoint_id", selected_endpoint_id))
         if selected_endpoint_name:
-            argparse_args.append(("endpoint-name", selected_endpoint_name))
+            argparse_args.append(("endpoint_name", selected_endpoint_name))
 
         if endpoint_config:
-            argparse_args.append(("endpoint-config-json", json.dumps(endpoint_config)))
+            argparse_args.append(("endpoint_config_json", json.dumps(endpoint_config)))
         if script:
             argparse_args.append(("script", script))
             argparse_args.append(("binary", binary))
             if script_working_directory:
-                argparse_args.append(("working-directory", script_working_directory))
+                argparse_args.append(("working_directory", script_working_directory))
             if script_args:
-                argparse_args.append(("script-args-json", json.dumps(list(script_args))))
+                argparse_args.append(("script_args_json", json.dumps(list(script_args))))
             if effective_clone_repo and not os.path.isabs(script):
-                argparse_args.append(("clone-repo", "true"))
-                argparse_args.append(("repo-url", repo))
-                argparse_args.append(("repo-branch", branch))
-                argparse_args.append(("repo-working-directory", working_directory))
+                argparse_args.append(("clone_repo", "true"))
+                argparse_args.append(("repo_url", repo))
+                argparse_args.append(("repo_branch", branch))
+                argparse_args.append(("repo_working_directory", working_directory))
 
         create_kwargs: Dict[str, Any] = {
             "project_name": project_name,
@@ -105,10 +105,10 @@ class GlobusComputeLauncher:
 
         params_to_set: Dict[str, str] = {}
         if selected_endpoint_id:
-            params_to_set["Args/endpoint-id"] = selected_endpoint_id
+            params_to_set["Args/endpoint_id"] = selected_endpoint_id
             params_to_set["env:GLOBUS_COMPUTE_ENDPOINT_ID"] = selected_endpoint_id
         if selected_endpoint_name:
-            params_to_set["Args/endpoint-name"] = selected_endpoint_name
+            params_to_set["Args/endpoint_name"] = selected_endpoint_name
             params_to_set["env:GLOBUS_COMPUTE_ENDPOINT_NAME"] = selected_endpoint_name
         if params_to_set:
             task.set_parameters_as_dict(params_to_set)
