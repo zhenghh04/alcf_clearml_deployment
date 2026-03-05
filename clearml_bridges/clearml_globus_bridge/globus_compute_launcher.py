@@ -72,9 +72,8 @@ class GlobusComputeLauncher:
         if script:
             argparse_args.append(("script", script))
             argparse_args.append(("binary", binary))
-            effective_script_working_directory = script_working_directory or working_directory
-            if effective_script_working_directory:
-                argparse_args.append(("working-directory", effective_script_working_directory))
+            if script_working_directory:
+                argparse_args.append(("working-directory", script_working_directory))
             if script_args:
                 argparse_args.append(("script-args-json", json.dumps(list(script_args))))
             if effective_clone_repo and not os.path.isabs(script):
