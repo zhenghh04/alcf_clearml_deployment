@@ -189,7 +189,15 @@ def build_endpoint_config(
 
 
 def build_compute_client(access_token: str = "") -> Any:
-    from globus_compute_sdk import Client
+    try:
+        from globus_compute_sdk import Client
+    except ImportError as exc:
+        raise RuntimeError(
+            "Incompatible Globus package versions detected for Compute SDK.\n"
+            f"Original error: {exc}\n"
+            "Fix with:\n"
+            "  python -m pip install --upgrade \"globus-sdk>=3.59.0,<4\" \"globus-compute-sdk>=4.6.0\""
+        ) from exc
 
     token = clean_str(access_token)
     if not token:
@@ -201,13 +209,11 @@ def build_compute_client(access_token: str = "") -> Any:
 
 
 def resolve_endpoint_id_from_name(endpoint_name: str, access_token: str = "") -> str:
-    from globus_compute_sdk import Client
-
     normalized_name = clean_str(endpoint_name)
     if not normalized_name:
         return ""
 
-    client: Client = build_compute_client(access_token)
+    client = build_compute_client(access_token)
     endpoints = client.get_endpoints(role="any") or []
 
     def endpoint_name_of(item: Dict[str, Any]) -> str:
@@ -256,13 +262,11 @@ def resolve_endpoint_id_from_name(endpoint_name: str, access_token: str = "") ->
 
 
 def resolve_endpoint_name_from_id(endpoint_id: str, access_token: str = "") -> str:
-    from globus_compute_sdk import Client
-
     normalized_id = clean_str(endpoint_id)
     if not normalized_id:
         return ""
 
-    client: Client = build_compute_client(access_token)
+    client = build_compute_client(access_token)
     metadata = client.get_endpoint_metadata(normalized_id) or {}
     return clean_str(
         metadata.get("display_name")

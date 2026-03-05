@@ -46,8 +46,20 @@ def clean_str(value: Any) -> str:
     return str(value).strip()
 
 
+def _compute_sdk_compat_error(exc: Exception) -> RuntimeError:
+    return RuntimeError(
+        "Incompatible Globus package versions detected for Compute SDK.\n"
+        f"Original error: {exc}\n"
+        "Fix with:\n"
+        "  python -m pip install --upgrade \"globus-sdk>=3.59.0,<4\" \"globus-compute-sdk>=4.6.0\""
+    )
+
+
 def build_compute_client(access_token: str = "") -> Any:
-    from globus_compute_sdk import Client
+    try:
+        from globus_compute_sdk import Client
+    except ImportError as exc:
+        raise _compute_sdk_compat_error(exc) from exc
 
     token = clean_str(access_token)
     if not token:
@@ -219,7 +231,11 @@ def main() -> int:
     import os
 
     token = clean_str(args.token) or clean_str(os.getenv("GLOBUS_COMPUTE_ACCESS_TOKEN"))
-    client = build_compute_client(token)
+    try:
+        client = build_compute_client(token)
+    except RuntimeError as exc:
+        print(str(exc), file=os.sys.stderr)
+        return 1
     endpoints = client.get_endpoints(role=args.role) or []
     normalized = [normalize_endpoint(item) for item in endpoints]
     if not args.no_metadata_lookup:
