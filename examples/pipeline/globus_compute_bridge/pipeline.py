@@ -72,7 +72,7 @@ def main() -> None:
         parents=["globus_compute_on_crux"],
     )
 
-    pipe.start(queue="crux-services")
+    pipe.start(queue="services")
     print(f"Pipeline started: {pipe.id}")
 
 
