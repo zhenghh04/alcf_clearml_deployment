@@ -34,3 +34,7 @@ configure Docker services, and bring the ClearML stack up.
     sudo docker-compose --env-file constants.env down
     sudo docker-compose --env-file constants.env up -d
     ```
+
+## MCP
+
+For read-only ClearML queries over MCP, see [server/mcp/README.md](/Users/huihuo.zheng/Documents/Research/AmSC/clearml/alcf_clearml_deployment/server/mcp/README.md).
