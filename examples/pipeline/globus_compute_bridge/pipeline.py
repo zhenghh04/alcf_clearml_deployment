@@ -63,7 +63,7 @@ def main() -> None:
     pipe.add_step(
         name="globus_compute_on_crux",
         base_task_id=submit_task.id,
-        execution_queue="crux-services",
+        execution_queue="services",
     )
     pipe.add_step(
         name="postprocess",
