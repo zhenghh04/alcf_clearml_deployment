@@ -8,6 +8,7 @@ This repository contains how we deploy ClearML in ALCF, with all the setup scrip
 
 ## Quick links
 - [Server setup guide](server/README.md)
+ - [AWS deployment guide](docs/aws.md)
 - [Client setup guide](clients/README.md)
 - [Globus bridge package guide](clearml_bridges/clearml_globus_bridge/README.md)
 - [Globus endpoint notes](clients/globus_endpoint_setup/README.md)
@@ -26,6 +27,7 @@ This repository contains how we deploy ClearML in ALCF, with all the setup scrip
     - `clearml_bridges/clearml_globus_bridge/`: Globus bridge package and endpoint config tools.
     - `clearml_bridges/clearml_iri_bridge/`: IRI bridge package and submit wrapper.
 - `examples/`: Runnable examples for job launching, pipelines, data, and tracking.
+- `../aws_clearml_deployment/`: Terraform scaffold and bootstrap files for AWS-based ClearML deployment.
 - `pyproject.toml`, `requirements.txt`: Package/dependency definitions.
 
 Directory snapshot:
@@ -134,6 +136,8 @@ End-to-end flow is: define/run pipeline or task on a local development platform 
 Server setup includes provisioning a VM, opening ports `8080/8081/8001`, copying ClearML-provided `docker-compose.yml`, `docker-compose.override.yml`, and `constants.env` into `/opt/allegro/`, running `server/ubuntu_setup.sh`, and then recreating services with `docker-compose`.
 - Follow [server/README.md](server/README.md).
 - Run `server/ubuntu_setup.sh` on the server VM.
+
+For AWS-based deployment, use [docs/aws.md](docs/aws.md) together with the sibling Terraform scaffold under [`../aws_clearml_deployment/README.md`](../aws_clearml_deployment/README.md).
 
 After the setup, one will be able to access the webUI via: https://amscclearml.alcf.anl.gov (or your own VM address)
 

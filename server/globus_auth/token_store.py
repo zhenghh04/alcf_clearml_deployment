@@ -1,4 +1,6 @@
+import argparse
 import json
+import os
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -90,3 +92,51 @@ class TokenStore:
             encrypted_tokens=row["encrypted_tokens"],
             updated_at=row["updated_at"],
         )
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Inspect the Globus connector token store.")
+    parser.add_argument(
+        "command",
+        choices=["get-token", "get-record"],
+        help="Read and print a stored token bundle or raw record for a user.",
+    )
+    parser.add_argument("--user-id", required=True, help="ClearML user ID in the token store.")
+    parser.add_argument(
+        "--db-path",
+        default=os.getenv("CONNECTOR_DB_PATH", "server/globus_auth/tokens.db"),
+        help="Path to tokens.db (default: CONNECTOR_DB_PATH or server/globus_auth/tokens.db).",
+    )
+    parser.add_argument(
+        "--fernet-key",
+        default=os.getenv("CONNECTOR_FERNET_KEY", ""),
+        help="Fernet key for decrypting token bundles (default: CONNECTOR_FERNET_KEY).",
+    )
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    if not args.fernet_key:
+        raise SystemExit(
+            "Missing Fernet key. Set CONNECTOR_FERNET_KEY or pass --fernet-key explicitly."
+        )
+
+    store = TokenStore(db_path=args.db_path, fernet_key=args.fernet_key)
+
+    if args.command == "get-record":
+        record = store.get_record(args.user_id)
+        if not record:
+            raise SystemExit(f"No stored record for user_id={args.user_id!r}")
+        print(json.dumps(record.__dict__, indent=2))
+        return 0
+
+    token_bundle = store.get_token_bundle(args.user_id)
+    if not token_bundle:
+        raise SystemExit(f"No stored token bundle for user_id={args.user_id!r}")
+    print(json.dumps(token_bundle, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
