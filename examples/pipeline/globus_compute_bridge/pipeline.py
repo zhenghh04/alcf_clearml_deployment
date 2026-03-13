@@ -18,7 +18,7 @@ def main() -> None:
     launcher = GlobusComputeLauncher()
     submit_task = launcher.create(
         project_name="AmSC/pipeline-globus-compute-bridge",
-        task_name="globus-compute",
+        task_name="globus-compute-2",
         task_type=Task.TaskTypes.data_processing,
         repo="git@github.com:zhenghh04/alcf_clearml_deployment.git",
         branch="main",
