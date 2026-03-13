@@ -7,8 +7,12 @@ Implemented tools:
 - `server_config`
 - `list_models`
 - `get_model`
+- `download_model`
+- `register_model`
 - `list_datasets`
 - `get_dataset`
+- `download_dataset`
+- `upload_dataset`
 - `search_tasks`
 - `get_task`
 - `list_task_artifacts`
@@ -87,6 +91,65 @@ Main parameters:
 
 Returns the same summary structure as `list_models`, but for a single model.
 
+### `download_model`
+
+Downloads a registered model locally by model ID.
+
+Main parameters:
+
+- `model_id`
+- `target_dir`
+- `extract_archive`
+- `force_download`
+
+Behavior:
+
+- Retrieves the model weights or package through ClearML storage helpers
+- If `target_dir` is provided, copies the downloaded model there
+- Supports extracting packaged models when `extract_archive=True`
+
+Returns:
+
+- All model summary fields from `get_model`
+- `local_path`
+- `copied_path`
+- `extract_archive`
+
+### `register_model`
+
+Registers a new model in ClearML from either a local weights file or an already uploaded URI.
+
+Main parameters:
+
+- `project_name`
+- `model_name`
+- `weights_path`: local file to upload
+- `register_uri`: existing model URI to register without uploading
+- `tags`
+- `comment`
+- `framework`
+- `config_text`
+- `output_uri`
+- `publish`
+- `task_name`
+
+Behavior:
+
+- Creates a lightweight backing task in ClearML
+- Creates an `OutputModel`
+- Uploads model weights from `weights_path`, or registers `register_uri`
+- Optionally publishes the model
+
+Returns:
+
+- Model summary fields
+- `task_id`: the backing registration task ID
+
+Notes:
+
+- Provide exactly one of `weights_path` or `register_uri`
+- `output_uri` controls where uploaded weights are stored when using `weights_path`
+
 ### `list_datasets`
 
 Lists ClearML datasets.
@@ -123,6 +186,79 @@ Main parameters:
 - `include_archived`
 
 Returns the same summary structure as `list_datasets`, but for a single dataset.
+
+### `download_dataset`
+
+Downloads a dataset locally by dataset ID.
+
+Main parameters:
+
+- `dataset_id`
+- `target_dir`: optional target directory
+- `include_archived`
+- `writable_copy`: if `True`, create a writable copy in `target_dir`
+- `overwrite`: only used with `writable_copy=True`
+- `use_soft_links`: only used for read-only cached copies
+- `part`
+- `num_parts`
+
+Behavior:
+
+- If `writable_copy=True`, materializes a writable dataset copy into `target_dir`
+- If `writable_copy=False`, fetches the cached read-only dataset copy
+- If `target_dir` is supplied with `writable_copy=False`, copies the cached dataset there
+- Supports partial dataset retrieval with `part` / `num_parts`
+
+Returns:
+
+- `dataset`
+- `local_path`
+- `writable_copy`
+- `part`
+- `num_parts`
+
+### `upload_dataset`
+
+Creates and uploads a new dataset from a local path and/or external URLs.
+
+Main parameters:
+
+- `dataset_project`
+- `dataset_name`
+- `local_path`: local file or folder to add
+- `external_urls`: comma-separated external URLs such as `s3://...`, `gs://...`, `file://...`, `https://...`
+- `dataset_version`
+- `parent_dataset_ids`: comma-separated parent dataset IDs
+- `tags`: comma-separated dataset tags
+- `description`
+- `output_uri`
+- `dataset_path`: target path inside the dataset
+- `use_sync_folder`: use `sync_folder` for local directories
+- `finalize`
+- `auto_upload`
+- `chunk_size_mb`
+
+Behavior:
+
+- Creates a new dataset task
+- Adds local files/folders if `local_path` is provided
+- Adds linked external files if `external_urls` is provided
+- Uploads pending files when `auto_upload=True`
+- Finalizes the dataset when `finalize=True`
+
+Returns:
+
+- `id`
+- `name`
+- `project`
+- `version`
+- `tags`
+- `created`
+- `local_path`
+- `external_urls`
+- `finalized`
+- `auto_uploaded`
+- `output_uri`
 
 ### `search_tasks`
 
@@ -336,6 +472,33 @@ List artifacts on one task:
 }
 ```
 
+Download a registered model:
+
+```json
+{
+  "tool": "download_model",
+  "arguments": {
+    "model_id": "1ba1823073374194ac6f15c28666527d",
+    "target_dir": "/tmp/models"
+  }
+}
+```
+
+Register a model from a local file:
+
+```json
+{
+  "tool": "register_model",
+  "arguments": {
+    "project_name": "AmSC",
+    "model_name": "best-resnet50-cifar10",
+    "weights_path": "/tmp/best_resnet50_cifar10.pth",
+    "framework": "PyTorch",
+    "publish": false
+  }
+}
+```
+
 Read a JSON artifact inline:
 
 ```json
@@ -357,6 +520,36 @@ Download an artifact into a working directory:
     "task_id": "14ca68ec108c443697a251987344d725",
     "artifact_name": "state",
     "target_dir": "/tmp/clearml_artifacts"
+  }
+}
+```
+
+Download a dataset into a writable local folder:
+
+```json
+{
+  "tool": "download_dataset",
+  "arguments": {
+    "dataset_id": "8d728bc930f243849fec4303808fcaeb",
+    "target_dir": "/tmp/allenai-c4",
+    "writable_copy": true,
+    "overwrite": true
+  }
+}
+```
+
+Create and upload a dataset from a local folder:
+
+```json
+{
+  "tool": "upload_dataset",
+  "arguments": {
+    "dataset_project": "AmSC/.datasets/demo",
+    "dataset_name": "demo-dataset",
+    "local_path": "/tmp/my_data",
+    "dataset_version": "1.0.0",
+    "finalize": true,
+    "auto_upload": true
   }
 }
 ```

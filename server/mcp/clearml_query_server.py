@@ -196,6 +196,18 @@ def _get_task_artifact(task_id: str, artifact_name: str, allow_archived: bool = 
     return artifact
 
 
+def _get_dataset_by_id(dataset_id: str, include_archived: bool = True) -> Any:
+    from clearml import Dataset
+
+    return Dataset.get(dataset_id=dataset_id, include_archived=include_archived)
+
+
+def _get_model_by_id(model_id: str) -> Any:
+    from clearml import Model
+
+    return Model(model_id=model_id)
+
+
 def _copy_to_target(path: str, target_dir: str) -> str:
     os.makedirs(target_dir, exist_ok=True)
     target_path = os.path.join(target_dir, os.path.basename(path.rstrip(os.sep)))
@@ -246,10 +258,104 @@ def list_models(
 @mcp.tool
 def get_model(model_id: str) -> Dict[str, Any]:
     """Get one registered ClearML model by id."""
-    from clearml import Model
-
-    model = Model(model_id=model_id)
+    model = _get_model_by_id(model_id=model_id)
     return _summarize_model(model)
+
+
+@mcp.tool
+def download_model(
+    model_id: str,
+    target_dir: str = "",
+    extract_archive: bool = True,
+    force_download: bool = False,
+) -> Dict[str, Any]:
+    """Download a registered model locally."""
+    model = _get_model_by_id(model_id=model_id)
+    local_path = model.get_local_copy(
+        extract_archive=extract_archive,
+        raise_on_error=True,
+        force_download=force_download,
+    )
+    copied_path = _copy_to_target(local_path, target_dir) if target_dir else None
+    return {
+        **_summarize_model(model),
+        "local_path": local_path,
+        "copied_path": copied_path,
+        "extract_archive": extract_archive,
+    }
+
+
+@mcp.tool
+def register_model(
+    project_name: str,
+    model_name: str,
+    weights_path: str = "",
+    register_uri: str = "",
+    tags: str = "",
+    comment: str = "",
+    framework: str = "",
+    config_text: str = "",
+    output_uri: str = "",
+    publish: bool = False,
+    task_name: str = "",
+) -> Dict[str, Any]:
+    """
+    Register a model in ClearML from a local weights file or an existing URI.
+
+    Exactly one of weights_path or register_uri must be provided.
+    """
+    from clearml import OutputModel, Task
+
+    if bool(weights_path) == bool(register_uri):
+        raise ValueError("Provide exactly one of weights_path or register_uri")
+
+    task = Task.create(
+        project_name=project_name,
+        task_name=task_name or f"register-model::{model_name}",
+        task_type="training",
+    )
+    if output_uri:
+        task.output_uri = output_uri
+
+    output_model = OutputModel(
+        task=task,
+        name=model_name,
+        tags=_split_csv(tags) or None,
+        comment=comment or None,
+        framework=framework or None,
+        config_text=config_text or None,
+    )
+
+    if weights_path:
+        output_model.update_weights(
+            weights_filename=weights_path,
+            upload_uri=output_uri or None,
+            auto_delete_file=False,
+            async_enable=False,
+        )
+    else:
+        output_model.update_weights(
+            register_uri=register_uri,
+            async_enable=False,
+        )
+
+    if publish:
+        output_model.publish()
+
+    try:
+        task.close()
+    except Exception:
+        pass
+    try:
+        task.mark_completed()
+    except Exception:
+        pass
+
+    model = _get_model_by_id(output_model.id)
+    result = _summarize_model(model)
+    result["published"] = publish or result.get("published")
+    result["task_id"] = task.id
+    return result
 
 
 @mcp.tool
@@ -288,6 +394,137 @@ def get_dataset(dataset_id: str, include_archived: bool = True) -> Dict[str, Any
     if not datasets:
         raise ValueError(f"Dataset not found: {dataset_id}")
     return _summarize_dataset(datasets[0])
+
+
+@mcp.tool
+def download_dataset(
+    dataset_id: str,
+    target_dir: str = "",
+    include_archived: bool = True,
+    writable_copy: bool = True,
+    overwrite: bool = False,
+    use_soft_links: bool = False,
+    part: int = -1,
+    num_parts: int = -1,
+) -> Dict[str, Any]:
+    """Download a dataset locally, either as a cached read-only copy or a writable target copy."""
+    dataset = _get_dataset_by_id(dataset_id=dataset_id, include_archived=include_archived)
+    part_value = None if part < 0 else part
+    num_parts_value = None if num_parts < 0 else num_parts
+
+    if writable_copy:
+        if not target_dir:
+            raise ValueError("target_dir is required when writable_copy=True")
+        local_path = dataset.get_mutable_local_copy(
+            target_folder=target_dir,
+            overwrite=overwrite,
+            part=part_value,
+            num_parts=num_parts_value,
+        )
+    else:
+        local_path = dataset.get_local_copy(
+            use_soft_links=use_soft_links,
+            part=part_value,
+            num_parts=num_parts_value,
+        )
+        if target_dir:
+            local_path = _copy_to_target(local_path, target_dir)
+
+    return {
+        "dataset": _summarize_dataset(get_dataset(dataset_id=dataset_id, include_archived=include_archived)["raw"]),
+        "local_path": local_path,
+        "writable_copy": writable_copy,
+        "part": part_value,
+        "num_parts": num_parts_value,
+    }
+
+
+@mcp.tool
+def upload_dataset(
+    dataset_project: str,
+    dataset_name: str,
+    local_path: str = "",
+    external_urls: str = "",
+    dataset_version: str = "",
+    parent_dataset_ids: str = "",
+    tags: str = "",
+    description: str = "",
+    output_uri: str = "",
+    dataset_path: str = "",
+    use_sync_folder: bool = True,
+    finalize: bool = True,
+    auto_upload: bool = True,
+    chunk_size_mb: int = 0,
+) -> Dict[str, Any]:
+    """
+    Create and upload a dataset from a local folder/file and/or external URLs.
+
+    At least one of local_path or external_urls must be provided.
+    """
+    from clearml import Dataset
+
+    if not local_path and not external_urls:
+        raise ValueError("At least one of local_path or external_urls must be provided")
+
+    dataset = Dataset.create(
+        dataset_name=dataset_name,
+        dataset_project=dataset_project,
+        dataset_tags=_split_csv(tags) or None,
+        parent_datasets=_split_csv(parent_dataset_ids) or None,
+        dataset_version=dataset_version or None,
+        output_uri=output_uri or None,
+        description=description or None,
+    )
+
+    if local_path:
+        if use_sync_folder and os.path.isdir(local_path):
+            dataset.sync_folder(
+                local_path=local_path,
+                dataset_path=dataset_path or None,
+                verbose=False,
+            )
+        else:
+            dataset.add_files(
+                path=local_path,
+                dataset_path=dataset_path or None,
+                recursive=True,
+                verbose=False,
+            )
+
+    if external_urls:
+        dataset.add_external_files(
+            source_url=_split_csv(external_urls),
+            dataset_path=dataset_path or None,
+            recursive=True,
+            verbose=False,
+        )
+
+    if auto_upload:
+        upload_kwargs: Dict[str, Any] = {
+            "show_progress": False,
+            "verbose": False,
+            "output_url": output_uri or None,
+        }
+        if chunk_size_mb > 0:
+            upload_kwargs["chunk_size"] = chunk_size_mb
+        dataset.upload(**upload_kwargs)
+
+    if finalize:
+        dataset.finalize(verbose=False, auto_upload=auto_upload)
+
+    return {
+        "id": dataset.id,
+        "name": dataset.name,
+        "project": dataset.project,
+        "version": dataset.version,
+        "tags": dataset.tags,
+        "created": True,
+        "local_path": local_path or None,
+        "external_urls": _split_csv(external_urls),
+        "finalized": finalize,
+        "auto_uploaded": auto_upload,
+        "output_uri": output_uri or dataset.get_default_storage(),
+    }
 
 
 @mcp.tool

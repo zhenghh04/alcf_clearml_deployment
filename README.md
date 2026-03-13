@@ -133,7 +133,7 @@ For remote execution patterns, we developed a set of bridge components allowing 
 End-to-end flow is: define/run pipeline or task on a local development platform -> enqueue to ClearML queue -> execute on agent or bridge backend -> collect outputs -> upload artifacts/metrics to ClearML fileserver/API -> monitor status and results in the ClearML UI. This keeps scheduling/execution flexible while preserving a consistent experiment and operations interface.
 
 ### Server setup
-Server setup includes provisioning a VM, opening ports `8080/8081/8001`, copying ClearML-provided `docker-compose.yml`, `docker-compose.override.yml`, and `constants.env` into `/opt/allegro/`, running `server/ubuntu_setup.sh`, and then recreating services with `docker-compose`.
+Server setup includes provisioning a VM, opening ports `8080/8081/8008`, copying ClearML-provided `docker-compose.yml`, `docker-compose.override.yml`, and `constants.env` into `/opt/allegro/`, running `server/ubuntu_setup.sh`, and then recreating services with `docker-compose`.
 - Follow [server/README.md](server/README.md).
 - Run `server/ubuntu_setup.sh` on the server VM.
 
