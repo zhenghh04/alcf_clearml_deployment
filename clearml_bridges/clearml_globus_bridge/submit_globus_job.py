@@ -538,9 +538,14 @@ def main() -> int:
     task.connect(initial_params, name="bridge")
     logger = task.get_logger()
     if parse_bool(args.debug_env, default=False):
+        debug_snapshot = json.dumps(
+            collect_debug_env_snapshot(), indent=2, sort_keys=True
+        )
+        print("Worker environment snapshot:")
+        print(debug_snapshot, flush=True)
         logger.report_text(
             "Worker environment snapshot:\n"
-            + json.dumps(collect_debug_env_snapshot(), indent=2, sort_keys=True)
+            + debug_snapshot
         )
 
     task_params = task.get_parameters_as_dict(cast=True)
