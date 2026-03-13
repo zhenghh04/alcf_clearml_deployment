@@ -8,7 +8,7 @@ manager = StorageManager()
 dataset = Dataset.create(dataset_name="test_dataset", dataset_project="dataset_examples")
 
 # Prepare and clean data here before it is added to the dataset
-dataset_path="/home/hzheng/clearml/examples/testdata"
+dataset_path="./testdata"
 dataset.add_files(path=dataset_path, max_workers=1)
 
 # Dataset is uploaded to the ClearML Server by default
