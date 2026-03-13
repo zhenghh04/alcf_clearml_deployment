@@ -109,6 +109,7 @@ class GlobusComputeLauncher:
         task = Task.create(**create_kwargs)
 
         params_to_set: Dict[str, str] = {}
+        params_to_set["env:GLOBUS_DEBUG_ENV"] = "1"
         if selected_endpoint_id:
             params_to_set["Args/endpoint_id"] = selected_endpoint_id
             params_to_set["env:GLOBUS_COMPUTE_ENDPOINT_ID"] = selected_endpoint_id
