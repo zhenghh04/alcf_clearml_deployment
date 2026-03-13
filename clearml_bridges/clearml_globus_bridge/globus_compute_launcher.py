@@ -9,6 +9,12 @@ from clearml import Task
 class GlobusComputeLauncher:
     """Create ClearML tasks that submit work to Globus Compute endpoints."""
 
+    DEFAULT_PACKAGES = [
+        "clearml>=2.1.3",
+        "globus-sdk>=3.59.0,<4",
+        "globus-compute-sdk>=4.6.0",
+    ]
+
     @staticmethod
     def _task_type_to_cli_value(task_type: Any) -> str:
         value = getattr(task_type, "value", None)
@@ -42,6 +48,7 @@ class GlobusComputeLauncher:
         script_args: Optional[Sequence[str]] = None,
         endpoint_config: Optional[Dict[str, Any]] = None,
         user_properties: Optional[Dict[str, Any]] = None,
+        packages: Optional[Sequence[str]] = None,
         tags: Optional[list[str]] = None,
     ) -> Task:
         effective_clone_repo = (
@@ -91,15 +98,13 @@ class GlobusComputeLauncher:
             "working_directory": launcher_working_directory or working_directory,
             "binary": launcher_binary,
             "argparse_args": argparse_args,
+            "packages": list(packages or self.DEFAULT_PACKAGES),
         }
         if launcher_script:
             create_kwargs["script"] = launcher_script
             create_kwargs["force_single_script_file"] = True
         else:
             create_kwargs["module"] = launcher_module
-            # Ensure clearml_globus_bridge package is importable on the agent.
-            # Requires working directory at repository root.
-            create_kwargs["packages"] = ["-e ."]
 
         task = Task.create(**create_kwargs)
 

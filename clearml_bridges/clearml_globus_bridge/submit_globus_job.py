@@ -3,11 +3,15 @@ import json
 import operator
 import os
 import time
+from importlib import metadata
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from globus_compute_sdk import Executor
 from globus_compute_sdk.serialize import AllCodeStrategies, ComputeSerializer
+
+MIN_GLOBUS_SDK = (3, 59, 0)
+MIN_GLOBUS_COMPUTE_SDK = (4, 6, 0)
 
 def clean_str(value: Any) -> str:
     if value is None:
@@ -23,6 +27,41 @@ def parse_bool(value: Any, default: bool = False) -> bool:
     if not normalized:
         return default
     return normalized in {"1", "true", "yes", "y", "on"}
+
+
+def parse_version_tuple(raw: str) -> tuple[int, ...]:
+    parts: list[int] = []
+    for chunk in raw.replace("-", ".").split("."):
+        digits = "".join(ch for ch in chunk if ch.isdigit())
+        if not digits:
+            break
+        parts.append(int(digits))
+    return tuple(parts)
+
+
+def ensure_runtime_packages() -> None:
+    required = [
+        ("globus-sdk", MIN_GLOBUS_SDK),
+        ("globus-compute-sdk", MIN_GLOBUS_COMPUTE_SDK),
+    ]
+    problems: list[str] = []
+    for package_name, min_version in required:
+        try:
+            installed = metadata.version(package_name)
+        except metadata.PackageNotFoundError:
+            problems.append(f"{package_name} is not installed")
+            continue
+        if parse_version_tuple(installed) < min_version:
+            problems.append(
+                f"{package_name}=={installed} is too old; need >= {'.'.join(map(str, min_version))}"
+            )
+    if problems:
+        raise RuntimeError(
+            "Incompatible Globus runtime packages detected:\n"
+            + "\n".join(f"- {item}" for item in problems)
+            + "\nFix with:\n"
+            + '  python -m pip install --upgrade "globus-sdk>=3.59.0,<4" "globus-compute-sdk>=4.6.0"'
+        )
 
 
 def parse_args() -> argparse.Namespace:
@@ -462,6 +501,7 @@ def resolve_task_type(TaskCls: Any, task_type_name: str) -> Any:
 
 def main() -> int:
     args = parse_args()
+    ensure_runtime_packages()
     from clearml import Task
 
     initial_params = vars(args).copy()
