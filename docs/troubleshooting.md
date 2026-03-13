@@ -17,3 +17,16 @@
 ## ClearML `Task` has no `set_environment`
 
 - Use `task.set_parameters_as_dict({"env:KEY": "value"})` (already applied in bridge code).
+
+## Private GitHub repo clone fails in ClearML Agent
+
+- If the task uses `https://github.com/...`, store GitHub credentials in the ClearML Configuration Vault:
+```hocon
+agent {
+  git_user: "<GITHUB_USERNAME>"
+  git_pass: "<GITHUB_PAT>"
+}
+```
+- Restart the agent after updating the vault and confirm the agent log shows `Loaded group vault for user ...`.
+- Use a PAT with repository read access.
+- If the task uses `git@github.com:...`, the agent needs SSH key access and a populated `known_hosts`, not `git_user` / `git_pass`.

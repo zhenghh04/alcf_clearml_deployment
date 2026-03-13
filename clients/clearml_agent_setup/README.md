@@ -46,6 +46,37 @@ clearml-agent daemon --help
 ```
 If this command runs without configuration errors, the local config is readable by ClearML tools.
 
+## GitHub credentials in Configuration Vault
+If your ClearML tasks clone a private GitHub repository over HTTPS, store the GitHub credentials in the ClearML Configuration Vault so agents can reuse them without keeping tokens in `~/.clearml.conf`.
+
+Recommended values:
+- Use a GitHub Personal Access Token (PAT) with read access to the target repository.
+- Use an HTTPS repository URL in the task, for example `https://github.com/<org>/<repo>.git`.
+- Store the credentials under the `agent` section so ClearML Agent can inject them during `git clone`.
+
+Add a vault configuration similar to:
+```hocon
+agent {
+  git_user: "<GITHUB_USERNAME>"
+  git_pass: "<GITHUB_PAT>"
+}
+```
+
+Suggested workflow in the ClearML Web UI:
+1. Open **Settings** -> **Configuration Vault**.
+2. Create or edit the vault entry that applies to the user/group/agent host that will run the task.
+3. Paste the `agent.git_user` and `agent.git_pass` values above.
+4. Save the vault entry and restart the affected ClearML agent process so it reloads the vault.
+
+Validation:
+- Start or restart the agent and check the startup log for a line similar to `Loaded group vault for user ...`.
+- Submit a task that points to a private HTTPS GitHub repository.
+- If cloning still fails, confirm the PAT is still valid and has repository read permission.
+
+Notes:
+- `agent.git_user` / `agent.git_pass` are intended for HTTPS cloning. If your task uses `git@github.com:...`, configure SSH keys on the agent instead.
+- For one-off local testing, you can also export `CLEARML_AGENT_GIT_USER` and `CLEARML_AGENT_GIT_PASS`, but the configuration vault is the cleaner shared setup.
+
 ## Queue prerequisite
 Before launching agents, create the target queues in the ClearML Server dashboard
 (for example `sirius`, `sirius-login`, `sirius-services`, or your custom names).
