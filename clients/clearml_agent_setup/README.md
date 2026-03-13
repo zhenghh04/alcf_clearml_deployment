@@ -54,6 +54,20 @@ Recommended values:
 - Use an HTTPS repository URL in the task, for example `https://github.com/<org>/<repo>.git`.
 - Store the credentials under the `agent` section so ClearML Agent can inject them during `git clone`.
 
+Create a new GitHub PAT:
+1. Open GitHub **Settings** -> **Developer settings** -> **Personal access tokens** -> **Fine-grained tokens**.
+2. Click **Generate new token**.
+3. Set a descriptive token name such as `clearml-agent-clone`.
+4. Pick a practical expiration time.
+5. Set the resource owner to the user or organization that owns the repository.
+6. Choose **Only select repositories** and select the repository the agent must clone.
+7. Under repository permissions, grant:
+   - **Contents**: **Read-only**
+   - **Metadata**: **Read-only**
+8. Generate the token and copy it immediately.
+
+If fine-grained tokens are blocked in your environment, a classic PAT with `repo` scope also works, but fine-grained is preferred.
+
 Add a vault configuration similar to:
 ```hocon
 agent {
@@ -72,10 +86,13 @@ Validation:
 - Start or restart the agent and check the startup log for a line similar to `Loaded group vault for user ...`.
 - Submit a task that points to a private HTTPS GitHub repository.
 - If cloning still fails, confirm the PAT is still valid and has repository read permission.
+- If the repository belongs to an organization with SSO or approval requirements, authorize or approve the token there as well.
+- If the repository contains private submodules, the PAT must also have read access to those repositories because ClearML clones with `--recursive`.
 
 Notes:
 - `agent.git_user` / `agent.git_pass` are intended for HTTPS cloning. If your task uses `git@github.com:...`, configure SSH keys on the agent instead.
 - For one-off local testing, you can also export `CLEARML_AGENT_GIT_USER` and `CLEARML_AGENT_GIT_PASS`, but the configuration vault is the cleaner shared setup.
+- If a PAT was stored in plaintext in an `.env` file, shell history, or logs, rotate it after moving the secret into the vault.
 
 ## Queue prerequisite
 Before launching agents, create the target queues in the ClearML Server dashboard
