@@ -1,5 +1,10 @@
+import os
+import subprocess
 import sys
 from pathlib import Path
+
+os.environ["CLEARML_FORCE_NO_REMOTE"] = "1"
+os.environ.pop("CLEARML_DEFAULT_QUEUE", None)
 
 from clearml import PipelineController, Task
 
@@ -14,7 +19,25 @@ if str(BRIDGES_ROOT) not in sys.path:
 from clearml_globus_bridge.globus_compute_launcher import GlobusComputeLauncher
 
 
+def start_log_follower(task_id: str) -> None:
+    helper = Path(__file__).with_name("follow_task_log.py")
+    subprocess.Popen(
+        [sys.executable, str(helper), "--task-id", task_id],
+        stdout=sys.stdout,
+        stderr=sys.stderr,
+        start_new_session=True,
+    )
+    print(f"Started log follower for controller task: {task_id}")
+
+
 def main() -> None:
+    controller_task = Task.init(
+        project_name="AmSC/pipeline-globus-compute-bridge",
+        task_name="globus-compute-bridge-controller",
+        task_type=Task.TaskTypes.controller,
+    )
+    start_log_follower(controller_task.id)
+
     launcher = GlobusComputeLauncher()
     submit_task = launcher.create(
         project_name="AmSC/pipeline-globus-compute-bridge",
@@ -28,6 +51,17 @@ def main() -> None:
         binary="/bin/bash",
         clone_repo=False,
         tags=["globus-bridge"],
+    )
+    submit_task.set_parameters_as_dict(
+        {
+            "env:GLOBUS_DEBUG_ENV": "1",
+            "env:HTTP_PROXY": "",
+            "env:HTTPS_PROXY": "",
+            "env:http_proxy": "",
+            "env:https_proxy": "",
+            "env:NO_PROXY": "localhost,127.0.0.1",
+            "env:no_proxy": "localhost,127.0.0.1",
+        }
     )
 
     submit_task.set_user_properties(
@@ -53,6 +87,16 @@ def main() -> None:
         binary="python",
         argparse_args=[("--expected-min-output", "1")],
     )
+    postprocess_task.set_parameters_as_dict(
+        {
+            "env:HTTP_PROXY": "",
+            "env:HTTPS_PROXY": "",
+            "env:http_proxy": "",
+            "env:https_proxy": "",
+            "env:NO_PROXY": "localhost,127.0.0.1",
+            "env:no_proxy": "localhost,127.0.0.1",
+        }
+    )
 
     pipe = PipelineController(
         name="globus-compute-bridge-pipeline",
@@ -73,6 +117,9 @@ def main() -> None:
     )
 
     pipe.start(queue="services")
+    print(f"Controller task id: {controller_task.id}")
+    print(f"Submit task id: {submit_task.id}")
+    print(f"Postprocess task id: {postprocess_task.id}")
     print(f"Pipeline started: {pipe.id}")
 
 
