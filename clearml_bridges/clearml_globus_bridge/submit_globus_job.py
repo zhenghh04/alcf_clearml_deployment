@@ -64,6 +64,20 @@ def ensure_runtime_packages() -> None:
         )
 
 
+def collect_debug_env_snapshot() -> Dict[str, str]:
+    snapshot = {"python_executable": os.sys.executable}
+    for key in (
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "NO_PROXY",
+        "http_proxy",
+        "https_proxy",
+        "no_proxy",
+    ):
+        snapshot[key] = os.getenv(key, "")
+    return snapshot
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -128,6 +142,11 @@ def parse_args() -> argparse.Namespace:
         "--required-endpoint-keys", "--required_endpoint_keys",
         default=os.getenv("GLOBUS_REQUIRED_ENDPOINT_KEYS", ""),
         help="Comma-separated required keys in endpoint config (example: filesystems).",
+    )
+    parser.add_argument(
+        "--debug-env", "--debug_env",
+        default=os.getenv("GLOBUS_DEBUG_ENV", "0"),
+        help="Log Python executable and proxy-related environment variables at startup.",
     )
     return parser.parse_args()
 
@@ -518,6 +537,11 @@ def main() -> int:
     )
     task.connect(initial_params, name="bridge")
     logger = task.get_logger()
+    if parse_bool(args.debug_env, default=False):
+        logger.report_text(
+            "Worker environment snapshot:\n"
+            + json.dumps(collect_debug_env_snapshot(), indent=2, sort_keys=True)
+        )
 
     task_params = task.get_parameters_as_dict(cast=True)
     task_user_properties = task.get_user_properties(value_only=True)
