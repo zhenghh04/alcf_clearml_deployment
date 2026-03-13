@@ -317,6 +317,13 @@ def is_retryable_submission_error(exc: Exception) -> bool:
         "endpoint_not_online",
         "disconnected",
         "connection closed",
+        "connection broken",
+        "incompleteread",
+        "incomplete read",
+        "protocolerror",
+        "protocol error",
+        "chunkedencodingerror",
+        "chunked encoding error",
         "temporarily unavailable",
         "timed out",
         "timeout",
@@ -331,6 +338,31 @@ def is_retryable_submission_error(exc: Exception) -> bool:
     if any(t in msg for t in non_retry_tokens):
         return False
     return any(t in msg for t in retry_tokens)
+
+
+def call_with_retries(
+    func: Any,
+    *func_args: Any,
+    retries: int,
+    retry_backoff_sec: int,
+    logger: Any = None,
+    action_name: str = "operation",
+    **func_kwargs: Any,
+) -> Any:
+    max_attempts = max(1, retries + 1)
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return func(*func_args, **func_kwargs)
+        except Exception as exc:
+            if attempt >= max_attempts or not is_retryable_submission_error(exc):
+                raise
+            sleep_sec = retry_backoff_sec * attempt
+            if logger is not None:
+                logger.report_text(
+                    f"{action_name} attempt {attempt}/{max_attempts} failed with retryable error: {exc}\n"
+                    f"Retrying in {sleep_sec}s..."
+                )
+            time.sleep(sleep_sec)
 
 
 def run_script(
@@ -459,10 +491,26 @@ def main() -> int:
         or clean_str(read_param(task_params, "endpoint_name"))
     )
     if not endpoint_id and endpoint_name:
-        endpoint_id = resolve_endpoint_id_from_name(endpoint_name, access_token=access_token)
+        endpoint_id = call_with_retries(
+            resolve_endpoint_id_from_name,
+            endpoint_name,
+            access_token=access_token,
+            retries=args.submit_retries,
+            retry_backoff_sec=args.retry_backoff_sec,
+            logger=logger,
+            action_name="Endpoint name resolution",
+        )
     if not endpoint_name and endpoint_id:
         try:
-            endpoint_name = resolve_endpoint_name_from_id(endpoint_id, access_token=access_token)
+            endpoint_name = call_with_retries(
+                resolve_endpoint_name_from_id,
+                endpoint_id,
+                access_token=access_token,
+                retries=args.submit_retries,
+                retry_backoff_sec=args.retry_backoff_sec,
+                logger=logger,
+                action_name="Endpoint metadata lookup",
+            )
         except Exception:
             endpoint_name = ""
     if not endpoint_id:

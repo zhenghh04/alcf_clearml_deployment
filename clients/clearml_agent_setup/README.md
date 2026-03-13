@@ -46,6 +46,32 @@ clearml-agent daemon --help
 ```
 If this command runs without configuration errors, the local config is readable by ClearML tools.
 
+## Agent environment settings in Configuration Vault
+If you want the Configuration Vault to affect how the ClearML agent starts task environments, put the settings under the `agent` section and then restart the agent so it reloads the vault.
+
+Example vault entry for a user-managed venv-based agent:
+```hocon
+agent {
+  python_binary: "/path/to/venv/bin/python"
+  extra_docker_arguments: [
+    "-e", "CLEARML_AGENT_SKIP_PYTHON_ENV_INSTALL=1",
+    "-e", "CLEARML_AGENT_SKIP_PIP_VENV_INSTALL=/path/to/venv/bin/python"
+  ]
+}
+```
+
+Suggested workflow in the ClearML Web UI:
+1. Open **Settings** -> **Configuration Vault**.
+2. Create or edit the vault entry that applies to the user/group/agent host that will run the task.
+3. Paste the `agent { ... }` block above and replace `/path/to/venv/bin/python` with the Python executable available on that worker.
+4. Save the vault entry and restart the affected ClearML agent process.
+
+Important limitations:
+- This works best for queues backed by agents you control.
+- If the task runs on a shared Docker-based `services` queue, the Python path must exist inside that worker environment or the task will still fail.
+- Vault config can override agent config fields, but it does not automatically convert an unrelated shared Docker worker into your own host venv worker.
+- For task-specific runtime variables, use task parameters like `task.set_parameters_as_dict({"env:KEY": "value"})` instead of the vault.
+
 ## GitHub credentials in Configuration Vault
 If your ClearML tasks clone a private GitHub repository over HTTPS, store the GitHub credentials in the ClearML Configuration Vault so agents can reuse them without keeping tokens in `~/.clearml.conf`.
 
