@@ -12,6 +12,6 @@ else
   echo "Your credentials for --extra-index-url are available in the WebApp under Help > ClearML Python Package setup > Install."
 fi
 
-pip install -U --extra-index-url https://${CLEARML_PIP_PACKAGE_USER}:${CLEARML_PIP_PACKAGE_PASS}@packages.allegro.ai/repository/clearml_agent_slurm/simple \
+python3 -m pip install -U --extra-index-url https://${CLEARML_PIP_PACKAGE_USER}:${CLEARML_PIP_PACKAGE_PASS}@packages.allegro.ai/repository/clearml_agent_slurm/simple \
     clearml-agent-slurm==0.10.1 \
     clearml-agent==2.0.7rc5
