@@ -2,6 +2,7 @@ import argparse
 import json
 import operator
 import os
+import sys
 import time
 from importlib import metadata
 from pathlib import Path
@@ -100,14 +101,6 @@ def parse_args() -> argparse.Namespace:
         "--endpoint-name", "--endpoint_name",
         default=os.getenv("GLOBUS_COMPUTE_ENDPOINT_NAME", ""),
     )
-    parser.add_argument(
-        "--token",
-        default=os.getenv("GLOBUS_COMPUTE_ACCESS_TOKEN", ""),
-        help=(
-            "Globus access token for non-interactive auth. "
-            "If omitted, default SDK auth flow is used."
-        ),
-    )
     parser.add_argument("--input-value", "--input_value", type=int, default=7)
     parser.add_argument("--poll-interval", "--poll_interval", type=int, default=5)
     parser.add_argument("--timeout-sec", "--timeout_sec", type=int, default=900)
@@ -148,8 +141,13 @@ def parse_args() -> argparse.Namespace:
         default=os.getenv("GLOBUS_DEBUG_ENV", "0"),
         help="Log Python executable and proxy-related environment variables at startup.",
     )
-    return parser.parse_args()
-
+    parser.add_argument(
+        "--token", "--token",
+        default=clean_str(os.getenv("GLOBUS_COMPUTE_ACCESS_TOKEN", "")),
+        help="Globus Compute access token.",
+    )
+    args = parser.parse_args(sanitized_argv[1:])
+    return args
 
 def flatten_params(params: Dict[str, Any], prefix: str = "") -> Dict[str, Any]:
     flattened: Dict[str, Any] = {}
@@ -524,11 +522,11 @@ def resolve_task_type(TaskCls: Any, task_type_name: str) -> Any:
 def main() -> int:
     args = parse_args()
     ensure_runtime_packages()
-    from clearml import Task
 
     initial_params = vars(args).copy()
     # Never store the raw token or even a masked token field in ClearML params.
     initial_params.pop("token", None)
+    from clearml import Task
     project_name = clean_str(args.project_name) or "amsc/pipeline-globus-bridge"
     task_name = clean_str(args.task_name) or "submit-globus-compute-job"
     task_type = resolve_task_type(Task, args.task_type)
@@ -539,12 +537,12 @@ def main() -> int:
         task_type=task_type,
     )
     task.connect(initial_params, name="bridge")
-    # Remove legacy token parameter rows from the task UI if they were pre-populated
-    # by task reuse or older task snapshots.
-    try:
-        task.delete_parameter("bridge/token", force=True)
-    except Exception:
-        pass
+    # Remove token parameter rows from all likely ClearML sections.
+    for param_name in ("bridge/token", "Args/token", "General/token", "token"):
+        try:
+            task.delete_parameter(param_name, force=True)
+        except Exception:
+            pass
     logger = task.get_logger()
     if parse_bool(args.debug_env, default=False):
         debug_snapshot = json.dumps(
