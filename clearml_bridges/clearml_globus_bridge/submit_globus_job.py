@@ -146,7 +146,7 @@ def parse_args() -> argparse.Namespace:
         default=clean_str(os.getenv("GLOBUS_COMPUTE_ACCESS_TOKEN", "")),
         help="Globus Compute access token.",
     )
-    args = parser.parse_args(sanitized_argv[1:])
+    args = parser.parse_args()
     return args
 
 def flatten_params(params: Dict[str, Any], prefix: str = "") -> Dict[str, Any]:
@@ -521,11 +521,9 @@ def resolve_task_type(TaskCls: Any, task_type_name: str) -> Any:
 
 def main() -> int:
     args = parse_args()
+    access_token = clean_str(args.token)
     ensure_runtime_packages()
-
-    initial_params = vars(args).copy()
-    # Never store the raw token or even a masked token field in ClearML params.
-    initial_params.pop("token", None)
+    args.token = "******************"
     from clearml import Task
     project_name = clean_str(args.project_name) or "amsc/pipeline-globus-bridge"
     task_name = clean_str(args.task_name) or "submit-globus-compute-job"
@@ -536,7 +534,7 @@ def main() -> int:
         task_name=task_name,
         task_type=task_type,
     )
-    task.connect(initial_params, name="bridge")
+    task.connect(args, name="bridge")
     # Remove token parameter rows from all likely ClearML sections.
     for param_name in ("bridge/token", "Args/token", "General/token", "token"):
         try:
@@ -557,7 +555,6 @@ def main() -> int:
 
     task_params = task.get_parameters_as_dict(cast=True)
     task_user_properties = task.get_user_properties(value_only=True)
-    access_token = clean_str(args.token)
     endpoint_id = (
         clean_str(args.endpoint_id)
         or clean_str(read_param(task_params, "endpoint_id"))
