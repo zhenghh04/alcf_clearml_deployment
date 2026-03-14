@@ -4,6 +4,7 @@ import os
 import re
 import shlex
 import subprocess
+import sys
 import time
 from typing import Any, Dict, List, Optional
 
@@ -318,6 +319,23 @@ def _poll_transfer(task_id: str, poll_interval: int) -> str:
 
 
 def _parse_transfer_args() -> argparse.Namespace:
+    token = str(os.getenv("GLOBUS_TRANSFER_ACCESS_TOKEN", "") or "").strip()
+    sanitized_argv = [sys.argv[0]]
+    skip_next = False
+    for i, arg in enumerate(sys.argv[1:], start=1):
+        if skip_next:
+            skip_next = False
+            continue
+        if arg == "--token":
+            if i + 1 < len(sys.argv):
+                token = str(sys.argv[i + 1] or "").strip()
+                skip_next = True
+            continue
+        if arg.startswith("--token="):
+            token = str(arg.split("=", 1)[1] or "").strip()
+            continue
+        sanitized_argv.append(arg)
+
     parser = argparse.ArgumentParser(description="Run Globus Transfer for data movement.")
     parser.add_argument("--src-endpoint", default=_env("GLOBUS_SRC_ENDPOINT"))
     parser.add_argument("--dst-endpoint", default=_env("GLOBUS_DST_ENDPOINT"))
@@ -330,18 +348,15 @@ def _parse_transfer_args() -> argparse.Namespace:
     parser.add_argument("--no-wait", action="store_true", default=_env_bool("GLOBUS_NO_WAIT", False))
     parser.add_argument("--dry-run", action="store_true", default=_env_bool("GLOBUS_DRY_RUN", False))
     parser.add_argument(
-        "--token",
-        default="",
-        help="Globus Transfer access token; when set, transfer uses SDK auth instead of CLI login state.",
-    )
-    parser.add_argument(
         "--token-env-var",
         default=_env("GLOBUS_TRANSFER_ACCESS_TOKEN_ENV", "GLOBUS_TRANSFER_ACCESS_TOKEN"),
-        help="Environment variable name to read Transfer token from when --token is not provided.",
+        help="Environment variable name that holds the Transfer token on the worker.",
     )
     parser.add_argument("--project-name", default=_env("CLEARML_PROJECT_NAME", "AmSC"))
     parser.add_argument("--task-name", default=_env("CLEARML_TASK_NAME", "Globus data movement"))
-    return parser.parse_args()
+    args = parser.parse_args(sanitized_argv[1:])
+    setattr(args, "token", token)
+    return args
 
 
 def _flatten_params(params: Dict[str, Any], prefix: str = "") -> Dict[str, Any]:
@@ -386,7 +401,6 @@ def _hydrate_args_from_task(args: argparse.Namespace, task: Any) -> None:
         "label": "label",
         "sync_level": "sync_level",
         "poll_interval": "poll_interval",
-        "token_env_var": "transfer_access_token_env",
     }
     for arg_name, param_name in mapping.items():
         current = getattr(args, arg_name, None)
@@ -414,6 +428,11 @@ def main() -> int:
         task = None
 
     if task is not None:
+        for param_name in ("Args/token", "General/token", "token"):
+            try:
+                task.delete_parameter(param_name, force=True)
+            except Exception:
+                pass
         _hydrate_args_from_task(args, task)
 
     if not all([args.src_endpoint, args.dst_endpoint, args.src_path, args.dst_path]):
@@ -422,9 +441,8 @@ def main() -> int:
         )
 
     access_token = str(args.token or "").strip()
-    if not access_token and str(args.token_env_var or "").strip():
-        access_token = str(_env(str(args.token_env_var).strip(), "") or "").strip()
-
+    if not access_token and args.token_env_var:
+        access_token = str(os.getenv(args.token_env_var, "") or "").strip()
     using_token = bool(access_token)
     if using_token:
         _maybe_log(
@@ -491,9 +509,7 @@ def _parse_launch_args() -> argparse.Namespace:
     parser.add_argument("--poll-interval", type=int, default=_env_int("GLOBUS_POLL_INTERVAL", 10))
     parser.add_argument("--dry-run", action="store_true", default=_env_bool("GLOBUS_DRY_RUN", False))
     parser.add_argument("--no-wait", action="store_true", default=_env_bool("GLOBUS_NO_WAIT", False))
-    parser.add_argument(
-        "--token-env-var",
-        default=_env("GLOBUS_TRANSFER_ACCESS_TOKEN_ENV", "GLOBUS_TRANSFER_ACCESS_TOKEN"),
+    parser.add_argument("--token-env-var", default=_env("GLOBUS_TRANSFER_ACCESS_TOKEN_ENV", "GLOBUS_TRANSFER_ACCESS_TOKEN"),
         help="Env var name available on the worker that contains the Transfer token.",
     )
     parser.add_argument("--queue", default=_env("QUEUE", "default"))
@@ -544,6 +560,10 @@ def launch_main() -> int:
             raise
         create_kwargs.pop("reuse_last_task_id", None)
         task = Task.create(**create_kwargs)
+    if args.token_env_var:
+        task.set_parameters_as_dict(
+            {"env:GLOBUS_TRANSFER_ACCESS_TOKEN_ENV": args.token_env_var}
+        )
     Task.enqueue(task, queue_name=args.queue)
     print(f"Enqueued task id={task.id} queue={args.queue}")
     try:

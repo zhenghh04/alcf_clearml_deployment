@@ -23,6 +23,7 @@ pip install -e .
 - `clearml-globus-auth`: create + enqueue a ClearML task that runs Globus auth on an agent
 - `clearml-globus-transfer`: run Globus Transfer data movement
 - `clearml-globus-transfer-launch`: create + enqueue a ClearML transfer task
+- `clearml-globus-compute-launch`: create and optionally enqueue a ClearML Globus Compute task
 
 ## ClearML Globus Compute (CLI)
 
@@ -49,6 +50,22 @@ clearml-globus-submit \
   --script-args-json '["--arg1","value1"]'
 ```
 
+Create and enqueue the submit task to a ClearML queue:
+
+```bash
+clearml-globus-compute-launch \
+  --project-name "AmSC/pipeline-globus-bridge" \
+  --task-name "submit-globus-script" \
+  --repo git@github.com:your-org/your-repo.git \
+  --branch main \
+  --working-directory . \
+  --task-type data_processing \
+  --endpoint-id "$GLOBUS_COMPUTE_ENDPOINT_ID" \
+  --script /path/on/endpoint/job.sh \
+  --binary /bin/bash \
+  --queue crux-services
+```
+
 Token-based Compute auth:
 
 ```bash
@@ -57,8 +74,6 @@ clearml-globus-submit --endpoint-id "$GLOBUS_COMPUTE_ENDPOINT_ID" --token "$GLOB
 ```
 
 Token handling note:
-- Do not store the Globus token in ClearML task parameters or task environment fields if you do not want it visible in the ClearML UI.
-- For launcher/task workflows, prefer providing `GLOBUS_COMPUTE_ACCESS_TOKEN` from the worker environment or Configuration Vault.
 - `submit_globus_job.py` removes the `token` argument from connected task parameters so new tasks do not show a `token` field in the UI.
 
 List Compute endpoints:

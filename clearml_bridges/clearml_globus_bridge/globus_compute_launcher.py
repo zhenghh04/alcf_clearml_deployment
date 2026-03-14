@@ -1,3 +1,4 @@
+import argparse
 import json
 import os
 from pathlib import Path
@@ -48,6 +49,7 @@ class GlobusComputeLauncher:
         script_args: Optional[Sequence[str]] = None,
         endpoint_config: Optional[Dict[str, Any]] = None,
         user_properties: Optional[Dict[str, Any]] = None,
+        token: Optional[str] = None,
         packages: Optional[Sequence[str]] = None,
         tags: Optional[list[str]] = None,
     ) -> Task:
@@ -73,7 +75,8 @@ class GlobusComputeLauncher:
             argparse_args.append(("endpoint_id", selected_endpoint_id))
         if selected_endpoint_name:
             argparse_args.append(("endpoint_name", selected_endpoint_name))
-
+        if token:
+            argparse_args.append(("token", token))
         if endpoint_config:
             argparse_args.append(("endpoint_config_json", json.dumps(endpoint_config)))
         if script:
@@ -107,7 +110,11 @@ class GlobusComputeLauncher:
             create_kwargs["module"] = launcher_module
 
         task = Task.create(**create_kwargs)
-
+        for param_name in ("bridge/token", "Args/token", "General/token", "token"):
+            try:
+                task.delete_parameter(param_name, force=True)
+            except Exception:
+                pass
         params_to_set: Dict[str, str] = {}
         params_to_set["env:GLOBUS_DEBUG_ENV"] = "1"
         if selected_endpoint_id:
@@ -130,3 +137,98 @@ class GlobusComputeLauncher:
             task.set_tags(tags)
 
         return task
+
+
+def _parse_task_type(value: str) -> Task.TaskTypes:
+    normalized = value.strip()
+    if not normalized:
+        raise ValueError("task_type cannot be empty")
+    for task_type in Task.TaskTypes:
+        if task_type.value == normalized:
+            return task_type
+    raise ValueError(
+        f"Unsupported task type '{value}'. Use one of: "
+        + ", ".join(sorted(task_type.value for task_type in Task.TaskTypes))
+    )
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Create and optionally enqueue a ClearML task that submits work to Globus Compute."
+    )
+    parser.add_argument("--project-name", required=True)
+    parser.add_argument("--task-name", required=True)
+    parser.add_argument("--repo", required=True)
+    parser.add_argument("--branch", default="main")
+    parser.add_argument("--working-directory", default=".")
+    parser.add_argument("--task-type", default=Task.TaskTypes.data_processing.value)
+    parser.add_argument("--endpoint-id", default="")
+    parser.add_argument("--endpoint-name", default="")
+    parser.add_argument("--script", default="")
+    parser.add_argument("--binary", default="/bin/bash")
+    parser.add_argument("--launcher-binary", default="python")
+    parser.add_argument("--launcher-working-directory", default="")
+    parser.add_argument("--script-working-directory", default="")
+    parser.add_argument("--clone-repo", dest="clone_repo", action="store_true")
+    parser.add_argument("--no-clone-repo", dest="clone_repo", action="store_false")
+    parser.set_defaults(clone_repo=True)
+    parser.add_argument("--input-value", type=int, default=7)
+    parser.add_argument("--poll-interval", type=int, default=5)
+    parser.add_argument("--timeout-sec", type=int, default=900)
+    parser.add_argument("--artifact-path", default="globus_result.json")
+    parser.add_argument("--script-args-json", default="")
+    parser.add_argument("--endpoint-config-json", default="")
+    parser.add_argument("--packages-json", default="")
+    parser.add_argument("--tags-json", default="")
+    parser.add_argument("--queue", default="")
+    parser.add_argument("--token", default="")
+    return parser
+
+
+def main() -> int:
+    parser = _build_parser()
+    args = parser.parse_args()
+
+    script_args = json.loads(args.script_args_json) if args.script_args_json else None
+    endpoint_config = (
+        json.loads(args.endpoint_config_json) if args.endpoint_config_json else None
+    )
+    packages = json.loads(args.packages_json) if args.packages_json else None
+    tags = json.loads(args.tags_json) if args.tags_json else None
+
+    launcher = GlobusComputeLauncher()
+    task = launcher.create(
+        project_name=args.project_name,
+        task_name=args.task_name,
+        repo=args.repo,
+        branch=args.branch,
+        working_directory=args.working_directory,
+        task_type=_parse_task_type(args.task_type),
+        endpoint_id=args.endpoint_id or None,
+        endpoint_name=args.endpoint_name or None,
+        script=args.script or None,
+        binary=args.binary,
+        launcher_binary=args.launcher_binary,
+        launcher_working_directory=args.launcher_working_directory or None,
+        script_working_directory=args.script_working_directory or None,
+        clone_repo=args.clone_repo,
+        input_value=args.input_value,
+        poll_interval=args.poll_interval,
+        timeout_sec=args.timeout_sec,
+        artifact_path=args.artifact_path,
+        script_args=script_args,
+        endpoint_config=endpoint_config,
+        token=args.token or None,
+        packages=packages,
+        tags=tags,
+    )
+    if args.queue:
+        Task.enqueue(task, queue_name=args.queue)
+        print(f"Enqueued task: {task.id} on queue {args.queue}")
+    else:
+        print(f"Created task: {task.id}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

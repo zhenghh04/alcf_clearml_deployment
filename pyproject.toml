@@ -29,6 +29,7 @@ clearml-globus-endpoints = "clearml_globus_bridge.list_endpoints:main"
 clearml-globus-auth = "clearml_globus_bridge.globus_auth:main"
 clearml-globus-transfer = "clearml_globus_bridge.data_movement:main"
 clearml-globus-transfer-launch = "clearml_globus_bridge.data_movement:launch_main"
+clearml-globus-compute-launch = "clearml_globus_bridge.globus_compute_launcher:main"
 clearml-iri-submit = "clearml_iri_bridge.submit_iri_job:main"
 
 [tool.setuptools]
