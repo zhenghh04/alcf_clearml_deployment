@@ -5,18 +5,47 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "clearml-globus-bridge"
 version = "0.1.0"
-description = "ClearML launcher and submit wrapper for Globus Compute"
+description = "ClearML launchers and submit wrappers for Globus Compute and IRI facility APIs"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
   "clearml>=2.0",
   "globus-compute-sdk>=2.21.0",
+  "requests>=2.31.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "ruff>=0.11.0",
 ]
 
 [project.scripts]
 clearml-globus-submit = "clearml_globus_bridge.submit_globus_job:main"
 clearml-globus-configure-pbs-endpoint = "clearml_globus_bridge.configure_pbs_endpoint:main"
 clearml-globus-configure-slurm-endpoint = "clearml_globus_bridge.configure_slurm_endpoint:main"
+clearml-globus-token = "clearml_globus_bridge.get_globus_token:main"
+clearml-globus-endpoints = "clearml_globus_bridge.list_endpoints:main"
+clearml-globus-auth = "clearml_globus_bridge.globus_auth:main"
+clearml-globus-transfer = "clearml_globus_bridge.data_movement:main"
+clearml-globus-transfer-launch = "clearml_globus_bridge.data_movement:launch_main"
+clearml-globus-compute-launch = "clearml_globus_bridge.globus_compute_launcher:main"
+clearml-iri-submit = "clearml_iri_bridge.submit_iri_job:main"
+
+[tool.setuptools]
+package-dir = {"" = "clearml_bridges"}
 
 [tool.setuptools.packages.find]
-include = ["clearml_globus_bridge*"]
+where = ["clearml_bridges"]
+include = ["clearml_globus_bridge*", "clearml_iri_bridge*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["clearml_bridges"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
