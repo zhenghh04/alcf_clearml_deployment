@@ -11,8 +11,8 @@ class GlobusComputeLauncher:
 
     DEFAULT_PACKAGES = [
         "clearml>=2.1.3",
-        "globus-sdk>=3.59.0,<4",
-        "globus-compute-sdk>=4.6.0",
+        "globus-sdk==3.65.0",
+        "globus-compute-sdk==4.6.0",
     ]
 
     @staticmethod

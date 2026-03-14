@@ -259,11 +259,14 @@ def build_compute_client(access_token: str = "") -> Any:
 
     token = clean_str(access_token)
     if not token:
-        return Client()
+        return Client(do_version_check=False)
 
     import globus_sdk
 
-    return Client(authorizer=globus_sdk.AccessTokenAuthorizer(token))
+    return Client(
+        authorizer=globus_sdk.AccessTokenAuthorizer(token),
+        do_version_check=False,
+    )
 
 
 def resolve_endpoint_id_from_name(endpoint_name: str, access_token: str = "") -> str:
@@ -524,8 +527,8 @@ def main() -> int:
     from clearml import Task
 
     initial_params = vars(args).copy()
-    if clean_str(initial_params.get("token")):
-        initial_params["token"] = "***"
+    # Never store the raw token or even a masked token field in ClearML params.
+    initial_params.pop("token", None)
     project_name = clean_str(args.project_name) or "amsc/pipeline-globus-bridge"
     task_name = clean_str(args.task_name) or "submit-globus-compute-job"
     task_type = resolve_task_type(Task, args.task_type)
