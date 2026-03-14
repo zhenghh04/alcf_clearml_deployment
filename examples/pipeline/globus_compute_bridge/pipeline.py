@@ -39,17 +39,6 @@ def main() -> None:
         clone_repo=False,
         tags=["globus-bridge"],
     )
-    submit_task.set_parameters_as_dict(
-        {
-            "env:GLOBUS_DEBUG_ENV": "1",
-            "env:HTTP_PROXY": "",
-            "env:HTTPS_PROXY": "",
-            "env:http_proxy": "",
-            "env:https_proxy": "",
-            "env:NO_PROXY": "localhost,127.0.0.1",
-            "env:no_proxy": "localhost,127.0.0.1",
-        }
-    )
 
     submit_task.set_user_properties(
         account="datascience",
@@ -73,16 +62,6 @@ def main() -> None:
         script="./tasks/postprocess_results.py",
         binary="python",
         argparse_args=[("--expected-min-output", "1")],
-    )
-    postprocess_task.set_parameters_as_dict(
-        {
-            "env:HTTP_PROXY": "",
-            "env:HTTPS_PROXY": "",
-            "env:http_proxy": "",
-            "env:https_proxy": "",
-            "env:NO_PROXY": "localhost,127.0.0.1",
-            "env:no_proxy": "localhost,127.0.0.1",
-        }
     )
 
     pipe = PipelineController(

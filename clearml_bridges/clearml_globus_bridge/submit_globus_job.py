@@ -539,6 +539,12 @@ def main() -> int:
         task_type=task_type,
     )
     task.connect(initial_params, name="bridge")
+    # Remove legacy token parameter rows from the task UI if they were pre-populated
+    # by task reuse or older task snapshots.
+    try:
+        task.delete_parameter("bridge/token", force=True)
+    except Exception:
+        pass
     logger = task.get_logger()
     if parse_bool(args.debug_env, default=False):
         debug_snapshot = json.dumps(
