@@ -56,6 +56,11 @@ eval "$(clearml-globus-token --type compute)"
 clearml-globus-submit --endpoint-id "$GLOBUS_COMPUTE_ENDPOINT_ID" --token "$GLOBUS_COMPUTE_ACCESS_TOKEN"
 ```
 
+Token handling note:
+- Do not store the Globus token in ClearML task parameters or task environment fields if you do not want it visible in the ClearML UI.
+- For launcher/task workflows, prefer providing `GLOBUS_COMPUTE_ACCESS_TOKEN` from the worker environment or Configuration Vault.
+- `submit_globus_job.py` removes the `token` argument from connected task parameters so new tasks do not show a `token` field in the UI.
+
 List Compute endpoints:
 
 ```bash
@@ -103,6 +108,8 @@ clearml-globus-transfer \
   --dst-path /datascience/test.txt \
   --token $GLOBUS_TRANSFER_ACCESS_TOKEN
 ```
+
+The same rule applies for transfer tokens: prefer worker environment or vault injection over storing tokens in task metadata.
 
 Create and enqueue transfer task:
 
