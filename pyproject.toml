@@ -32,6 +32,8 @@ clearml-globus-transfer-launch = "clearml_globus_bridge.data_movement:launch_mai
 clearml-globus-compute-launch = "clearml_globus_bridge.globus_compute_launcher:main"
 clearml-iri-launch = "clearml_iri_bridge.iri_launcher:main"
 clearml-iri-submit = "clearml_iri_bridge.submit_iri_job:main"
+clearml-iri-transfer = "clearml_iri_bridge.data_movement:main"
+clearml-iri-transfer-launch = "clearml_iri_bridge.iri_data_mover:main"
 
 [tool.setuptools]
 package-dir = {"" = "clearml_bridges"}

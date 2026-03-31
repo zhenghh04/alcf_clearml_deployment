@@ -13,6 +13,95 @@ FACILITY_BASE_URLS = {
 }
 
 
+def build_job_payload(
+    *,
+    scheduler: str,
+    name: str,
+    directory: str,
+    stdout_path: str,
+    stderr_path: str,
+    executable: str = "/bin/bash",
+    arguments: Optional[list[str]] = None,
+    command: str = "",
+    script_path: str = "",
+    account: str = "",
+    queue_name: str = "",
+    duration: Optional[int] = None,
+    custom_attributes: Optional[Dict[str, Any]] = None,
+    extra_attributes: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    scheduler_name = scheduler.strip().lower()
+    if scheduler_name not in {"pbs", "slurm"}:
+        raise ValueError("scheduler must be one of: pbs, slurm")
+
+    if arguments and (command or script_path):
+        raise ValueError("Pass either arguments or command/script_path, not both.")
+
+    resolved_arguments = list(arguments or [])
+    if script_path:
+        resolved_arguments = ["-lc", Path(script_path).read_text(encoding="utf-8")]
+    elif command:
+        resolved_arguments = ["-lc", command]
+
+    if not resolved_arguments:
+        raise ValueError("Job payload requires either arguments, command, or script_path.")
+
+    attrs: Dict[str, Any] = dict(extra_attributes or {})
+    if account:
+        attrs["account"] = account
+    if queue_name:
+        attrs["queue_name"] = queue_name
+    if duration is not None:
+        attrs["duration"] = duration
+    if custom_attributes:
+        attrs["custom_attributes"] = dict(custom_attributes)
+    if scheduler_name == "slurm":
+        # Preserve the scheduler choice for bridges that need to branch later.
+        attrs.setdefault("scheduler", "slurm")
+
+    return {
+        "name": name,
+        "executable": executable,
+        "arguments": resolved_arguments,
+        "directory": directory,
+        "stdout_path": stdout_path,
+        "stderr_path": stderr_path,
+        "attributes": attrs,
+    }
+
+
+def build_alcf_job_payload(
+    *,
+    name: str,
+    directory: str,
+    stdout_path: str,
+    stderr_path: str,
+    account: str,
+    queue_name: str,
+    duration: int,
+    executable: str = "/bin/bash",
+    arguments: Optional[list[str]] = None,
+    command: str = "",
+    script_path: str = "",
+    custom_attributes: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    return build_job_payload(
+        scheduler="pbs",
+        name=name,
+        directory=directory,
+        stdout_path=stdout_path,
+        stderr_path=stderr_path,
+        account=account,
+        queue_name=queue_name,
+        duration=duration,
+        executable=executable,
+        arguments=arguments,
+        command=command,
+        script_path=script_path,
+        custom_attributes=custom_attributes,
+    )
+
+
 class IRILauncher:
     """Create ClearML tasks that submit work to an IRI-compatible facility API."""
 
