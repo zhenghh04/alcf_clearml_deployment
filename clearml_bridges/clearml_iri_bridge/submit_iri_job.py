@@ -4,7 +4,7 @@ import os
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-from urllib.parse import urljoin
+from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
 
 import requests
 from clearml import Task
@@ -295,6 +295,14 @@ def request_json(
     return parsed
 
 
+def add_query_params(url: str, **params: str) -> str:
+    parsed = urlparse(url)
+    query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    for key, value in params.items():
+        query[key] = value
+    return urlunparse(parsed._replace(query=urlencode(query)))
+
+
 def request_data(
     session: requests.Session,
     method: str,
@@ -403,6 +411,7 @@ def poll_until_terminal(
     start = time.time()
     last_payload: Dict[str, Any] = {}
     terminal_set = {s.upper() for s in terminal_states}
+    historical_status_url = add_query_params(status_url, historical="true")
     while True:
         elapsed = time.time() - start
         if elapsed > timeout_sec:
@@ -410,13 +419,28 @@ def poll_until_terminal(
                 f"Timeout waiting for terminal state after {timeout_sec}s. Last payload: {last_payload}"
             )
 
-        last_payload = request_json(
-            session=session,
-            method="GET",
-            url=status_url,
-            headers=headers,
-            request_timeout_sec=request_timeout_sec,
-        )
+        try:
+            last_payload = request_json(
+                session=session,
+                method="GET",
+                url=status_url,
+                headers=headers,
+                request_timeout_sec=request_timeout_sec,
+            )
+        except HTTPError as exc:
+            status_code = getattr(exc.response, "status_code", None)
+            if status_code not in {400, 404}:
+                raise
+            logger.report_text(
+                f"[iri] live status lookup failed with {status_code}; retrying historical status endpoint"
+            )
+            last_payload = request_json(
+                session=session,
+                method="GET",
+                url=historical_status_url,
+                headers=headers,
+                request_timeout_sec=request_timeout_sec,
+            )
         status = parse_status(last_payload, status_field)
         logger.report_text(f"[iri] status={status or '<missing>'} elapsed={elapsed:.1f}s")
         logger.report_scalar("iri_bridge", "wait_time_sec", value=elapsed, iteration=int(elapsed))
