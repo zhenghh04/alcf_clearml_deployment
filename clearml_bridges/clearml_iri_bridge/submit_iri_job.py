@@ -237,6 +237,90 @@ def request_json(
     return parsed
 
 
+def request_data(
+    session: requests.Session,
+    method: str,
+    url: str,
+    headers: Dict[str, str],
+    request_timeout_sec: int,
+    payload: Optional[Dict[str, Any]] = None,
+) -> Any:
+    response = session.request(
+        method=method,
+        url=url,
+        headers=headers,
+        json=payload,
+        timeout=request_timeout_sec,
+    )
+    response.raise_for_status()
+    if not response.text:
+        return {}
+    return response.json()
+
+
+def _extract_resource_items(payload: Any) -> List[Dict[str, Any]]:
+    if isinstance(payload, list):
+        return [item for item in payload if isinstance(item, dict)]
+    if isinstance(payload, dict):
+        for key in ("resources", "items", "data", "results"):
+            value = payload.get(key)
+            if isinstance(value, list):
+                return [item for item in value if isinstance(item, dict)]
+    return []
+
+
+def resolve_system_identifier(
+    facility: str,
+    system: str,
+    api_base_url: str,
+    session: requests.Session,
+    headers: Dict[str, str],
+    request_timeout_sec: int,
+) -> str:
+    if clean_str(facility).lower() != "alcf":
+        return system
+    if "-" in system and len(system) >= 16:
+        return system
+
+    resources_url = make_url(api_base_url, "/api/v1/status/resources?resource_type=compute")
+    payload = request_data(
+        session=session,
+        method="GET",
+        url=resources_url,
+        headers=headers,
+        request_timeout_sec=request_timeout_sec,
+    )
+    items = _extract_resource_items(payload)
+    target = system.strip().lower()
+
+    for item in items:
+        candidates = [
+            clean_str(item.get("id")),
+            clean_str(item.get("name")),
+            clean_str(item.get("group")),
+            clean_str(item.get("description")),
+        ]
+        if any(candidate.lower() == target for candidate in candidates if candidate):
+            resolved = clean_str(item.get("id"))
+            if resolved:
+                return resolved
+
+    for item in items:
+        candidates = [
+            clean_str(item.get("name")),
+            clean_str(item.get("group")),
+            clean_str(item.get("description")),
+        ]
+        if any(target in candidate.lower() for candidate in candidates if candidate):
+            resolved = clean_str(item.get("id"))
+            if resolved:
+                return resolved
+
+    raise ValueError(
+        f"Could not resolve ALCF system '{system}' to a compute resource id via {resources_url}."
+    )
+
+
 def poll_until_terminal(
     session: requests.Session,
     status_url: str,
@@ -306,14 +390,24 @@ def main() -> None:
     if not system:
         raise ValueError("IRI system is required. Pass --system or export IRI_SYSTEM.")
 
+    session = requests.Session()
+    resolved_system = resolve_system_identifier(
+        facility=args.facility,
+        system=system,
+        api_base_url=api_base_url,
+        session=session,
+        headers=headers,
+        request_timeout_sec=args.request_timeout_sec,
+    )
+
     submit_url = make_url(
         api_base_url,
-        format_path_template(args.submit_path, system=system, resource_id=system),
+        format_path_template(args.submit_path, system=resolved_system, resource_id=resolved_system),
     )
-    session = requests.Session()
 
     logger.report_text(f"[iri] submit_url={submit_url}")
     logger.report_text(f"[iri] auth_header_present={args.auth_header_name in headers}")
+    logger.report_text(f"[iri] system={system} resolved_system={resolved_system}")
     submit_response = request_json(
         session=session,
         method=args.method.upper(),
@@ -330,8 +424,8 @@ def main() -> None:
         api_base_url,
         format_path_template(
             args.status_path_template,
-            system=system,
-            resource_id=system,
+            system=resolved_system,
+            resource_id=resolved_system,
             job_id=job_id,
         ),
     )
@@ -353,8 +447,8 @@ def main() -> None:
             api_base_url,
             format_path_template(
                 args.result_path_template,
-                system=system,
-                resource_id=system,
+                system=resolved_system,
+                resource_id=resolved_system,
                 job_id=job_id,
             ),
         )
@@ -369,7 +463,8 @@ def main() -> None:
     result_value = read_nested(final_payload, args.result_field) if args.result_field else None
     output = {
         "system": system,
-        "resource_id": system,
+        "resolved_system": resolved_system,
+        "resource_id": resolved_system,
         "job_id": job_id,
         "status": status,
         "elapsed_sec": elapsed,
