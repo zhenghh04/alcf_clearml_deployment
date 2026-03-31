@@ -12,10 +12,10 @@ from clearml_globus_bridge import GlobusDataMover
 from clearml_iri_bridge import IRILauncher, build_job_payload
 
 
-SRC_ENDPOINT = "YOUR_LOCAL_ENDPOINT"
-DST_ENDPOINT = "YOUR_REMOTE_ENDPOINT"
-SRC_PATH = "/path/on/local/machine/job.sh"
-DST_PATH = "/home/hzheng/clearml/alcf_clearml_deployment/examples/job_launching/iri/python/job.sh"
+SRC_ENDPOINT = "zion"
+DST_ENDPOINT = "eagle"
+SRC_PATH = "/Users/huihuo.zheng/Documents/Research/AmSC/clearml/alcf_clearml_deployment/examples/job_launching/iri/python/job.sh"
+DST_PATH = "/datascience/hzheng/job.sh"
 
 
 def main() -> int:
@@ -40,15 +40,15 @@ def main() -> int:
     launcher = IRILauncher()
     job_payload = build_job_payload(
         scheduler="pbs",
-        name="clearml-iri-job",
-        directory="/home/hzheng/",
-        stdout_path="/home/hzheng/iri.out",
-        stderr_path="/home/hzheng/iri.err",
+        name="clearml-iri-job-stage",
+        directory="/lus/eagle/projects/datascience/hzheng/",
+        stdout_path="/lus/eagle/projects/datascience/hzheng/iri.out",
+        stderr_path="/lus/eagle/projects/datascience/hzheng/iri.err",
         account="AmSC_Demos",
         queue_name="debug",
         duration=300,
         custom_attributes={"filesystems": "home:eagle"},
-        script_path=DST_PATH,
+        script_path="/lus/eagle/projects/datascience/hzheng/job.sh",
     )
     submit_task = launcher.create(
         project_name="AmSC/pipeline-iri-bridge",
@@ -70,7 +70,7 @@ def main() -> int:
     pipe.add_step(
         name="stage_in_with_globus",
         base_task_id=transfer_task.id,
-        execution_queue="services",
+        execution_queue="crux-services",
     )
     pipe.add_step(
         name="submit_iri_job",
@@ -79,7 +79,7 @@ def main() -> int:
         parents=["stage_in_with_globus"],
     )
 
-    pipe.start(queue="services")
+    pipe.start(queue="crux-services")
 
     print(f"Controller task id: {controller_task.id}")
     print(f"Transfer task id: {transfer_task.id}")
