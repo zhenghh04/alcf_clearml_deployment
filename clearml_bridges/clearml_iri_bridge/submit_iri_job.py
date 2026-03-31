@@ -160,10 +160,36 @@ def read_nested(payload: Dict[str, Any], dot_path: str) -> Any:
     return cur
 
 
-def read_payload(args: argparse.Namespace) -> Dict[str, Any]:
+def _get_task_parameter(task: Task, *names: str) -> str:
+    try:
+        params = task.get_parameters_as_dict()
+    except Exception:
+        return ""
+    for name in names:
+        value = params.get(name)
+        if value is None:
+            continue
+        normalized = clean_str(value)
+        if normalized:
+            return normalized
+    return ""
+
+
+def read_payload(args: argparse.Namespace, task: Optional[Task] = None) -> Dict[str, Any]:
     if args.job_payload_file:
         return json.loads(Path(args.job_payload_file).read_text())
-    return parse_json_object(args.job_payload_json, "--job-payload-json")
+    if args.job_payload_json:
+        return parse_json_object(args.job_payload_json, "--job-payload-json")
+    if task is not None:
+        task_payload = _get_task_parameter(
+            task,
+            "Args/job-payload-json",
+            "job-payload-json",
+            "job_payload_json",
+        )
+        if task_payload:
+            return parse_json_object(task_payload, "Args/job-payload-json")
+    return {}
 
 
 def build_headers(args: argparse.Namespace) -> Dict[str, str]:
@@ -383,7 +409,6 @@ def main() -> None:
     project_name = clean_str(args.project_name) or "amsc/pipeline-iri-bridge"
     task_name = clean_str(args.task_name) or "submit-iri-job"
     api_base_url = resolve_api_base_url(args.facility)
-    print("Selected IRI API base URL:", api_base_url)
     task = Task.init(
         project_name=project_name,
         task_name=task_name,
@@ -391,7 +416,10 @@ def main() -> None:
     )
     logger = task.get_logger()
 
-    payload = read_payload(args)
+    payload_source = "cli"
+    if not args.job_payload_json and not args.job_payload_file:
+        payload_source = "task-parameters"
+    payload = read_payload(args, task=task)
     headers = build_headers(args)
     validate_auth(headers, args)
     terminal_states = parse_json_list(
@@ -429,6 +457,7 @@ def main() -> None:
     logger.report_text(f"[iri] submit_url={submit_url}")
     logger.report_text(f"[iri] auth_header_present={args.auth_header_name in headers}")
     logger.report_text(f"[iri] system={system} resolved_system={resolved_system}")
+    logger.report_text(f"[iri] payload_source={payload_source}")
     logger.report_text(f"[iri] payload={json.dumps(payload, sort_keys=True)}")
     submit_response = request_json(
         session=session,
