@@ -17,9 +17,9 @@ def main() -> int:
     job_payload = build_job_payload(
         scheduler="pbs",
         name="clearml-iri-job",
-        directory="/eagle/datascience/hzheng/",
-        stdout_path="/eagle/datascience/hzheng/iri.out",
-        stderr_path="/eagle/datascience/hzheng/iri.err",
+        directory="/lus/eagle/projects/datascience/hzheng/",
+        stdout_path="/lus/eagle/projects/datascience/hzheng/iri.out",
+        stderr_path="/lus/eagle/projects/datascience/hzheng/iri.err",
         account="AmSC_Demos",
         queue_name="debug",
         duration=300,
