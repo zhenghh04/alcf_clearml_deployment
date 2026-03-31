@@ -44,6 +44,7 @@ class IRILauncher:
                 "IRI facility is required. Pass facility='alcf'|'nersc'|'olcf' "
                 "or export IRI_FACILITY."
             )
+        print("Selecting custom IRI API base URL:", selected_api_base_url)
         return "custom", selected_api_base_url
 
     def create(

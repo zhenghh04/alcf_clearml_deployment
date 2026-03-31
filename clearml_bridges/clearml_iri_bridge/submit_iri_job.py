@@ -268,6 +268,7 @@ def main() -> None:
     project_name = clean_str(args.project_name) or "amsc/pipeline-iri-bridge"
     task_name = clean_str(args.task_name) or "submit-iri-job"
     api_base_url = resolve_api_base_url(args.facility)
+    print("Selected IRI API base URL:", api_base_url)
     task = Task.init(
         project_name=project_name,
         task_name=task_name,
