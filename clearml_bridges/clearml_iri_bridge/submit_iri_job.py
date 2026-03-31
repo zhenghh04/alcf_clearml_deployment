@@ -44,6 +44,20 @@ def parse_json_list(raw: str, arg_name: str, default: List[str]) -> List[str]:
     return [str(item) for item in parsed]
 
 
+def _escape_graphql_string(value: str) -> str:
+    return value.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _normalize_script_text(script_text: str) -> str:
+    lines = []
+    for raw_line in script_text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#!"):
+            continue
+        lines.append(line)
+    return "; ".join(lines)
+
+
 def normalize_job_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     normalized = dict(payload)
     script = clean_str(normalized.pop("script", ""))
@@ -63,7 +77,18 @@ def normalize_job_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     if script:
         normalized.setdefault("executable", "/bin/bash")
-        normalized["arguments"] = ["-lc", script]
+        normalized["arguments"] = ["-c", _escape_graphql_string(_normalize_script_text(script))]
+    elif (
+        normalized.get("executable") == "/bin/bash"
+        and isinstance(arguments, list)
+        and len(arguments) == 2
+        and str(arguments[0]) in {"-lc", "-c"}
+        and isinstance(arguments[1], str)
+    ):
+        normalized["arguments"] = [
+            "-c",
+            _escape_graphql_string(_normalize_script_text(arguments[1])),
+        ]
 
     return normalized
 

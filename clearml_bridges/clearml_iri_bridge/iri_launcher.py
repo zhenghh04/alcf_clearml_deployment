@@ -13,6 +13,20 @@ FACILITY_BASE_URLS = {
 }
 
 
+def _escape_graphql_string(value: str) -> str:
+    return value.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _normalize_script_text(script_text: str) -> str:
+    lines = []
+    for raw_line in script_text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#!"):
+            continue
+        lines.append(line)
+    return "; ".join(lines)
+
+
 def build_job_payload(
     *,
     scheduler: str,
@@ -42,11 +56,11 @@ def build_job_payload(
     if script and script_path:
         raise ValueError("Pass either script or script_path, not both.")
     if script_path:
-        resolved_arguments = ["-lc", Path(script_path).read_text(encoding="utf-8")]
-    elif script:
-        resolved_arguments = ["-lc", script]
+        script = Path(script_path).read_text(encoding="utf-8")
+    if script:
+        resolved_arguments = ["-c", _escape_graphql_string(_normalize_script_text(script))]
     elif command:
-        resolved_arguments = ["-lc", command]
+        resolved_arguments = ["-c", _escape_graphql_string(_normalize_script_text(command))]
 
     if not resolved_arguments:
         raise ValueError("Job payload requires either arguments, command, script, or script_path.")
