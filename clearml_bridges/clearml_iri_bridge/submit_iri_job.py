@@ -8,6 +8,7 @@ from urllib.parse import urljoin
 
 import requests
 from clearml import Task
+from requests import HTTPError
 
 FACILITY_BASE_URLS = {
     "alcf": "https://api.alcf.anl.gov",
@@ -228,7 +229,17 @@ def request_json(
         json=payload,
         timeout=request_timeout_sec,
     )
-    response.raise_for_status()
+    try:
+        response.raise_for_status()
+    except HTTPError as exc:
+        detail = response.text.strip()
+        if len(detail) > 4000:
+            detail = detail[:4000] + "...<truncated>"
+        message = (
+            f"{exc}\n"
+            f"Response body: {detail or '<empty>'}"
+        )
+        raise HTTPError(message, response=response) from exc
     if not response.text:
         return {}
     parsed = response.json()
@@ -252,7 +263,17 @@ def request_data(
         json=payload,
         timeout=request_timeout_sec,
     )
-    response.raise_for_status()
+    try:
+        response.raise_for_status()
+    except HTTPError as exc:
+        detail = response.text.strip()
+        if len(detail) > 4000:
+            detail = detail[:4000] + "...<truncated>"
+        message = (
+            f"{exc}\n"
+            f"Response body: {detail or '<empty>'}"
+        )
+        raise HTTPError(message, response=response) from exc
     if not response.text:
         return {}
     return response.json()
