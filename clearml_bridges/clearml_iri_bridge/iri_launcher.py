@@ -1,5 +1,6 @@
 import json
 import os
+import shlex
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -39,6 +40,7 @@ def build_job_payload(
     command: str = "",
     script: str = "",
     script_path: str = "",
+    script_remote_path: str = "",
     account: str = "",
     queue_name: str = "",
     duration: Optional[int] = None,
@@ -49,21 +51,25 @@ def build_job_payload(
     if scheduler_name not in {"pbs", "slurm"}:
         raise ValueError("scheduler must be one of: pbs, slurm")
 
-    if arguments and (command or script or script_path):
-        raise ValueError("Pass either arguments or command/script/script_path, not both.")
+    if arguments and (command or script or script_path or script_remote_path):
+        raise ValueError("Pass either arguments or command/script/script_path/script_remote_path, not both.")
 
     resolved_arguments = list(arguments or [])
-    if script and script_path:
-        raise ValueError("Pass either script or script_path, not both.")
+    if sum(bool(value) for value in (script, script_path, script_remote_path)) > 1:
+        raise ValueError("Pass only one of script, script_path, or script_remote_path.")
     if script_path:
         script = Path(script_path).read_text(encoding="utf-8")
-    if script:
+    if script_remote_path:
+        resolved_arguments = ["-c", f"/bin/bash {shlex.quote(script_remote_path)}"]
+    elif script:
         resolved_arguments = ["-c", _escape_graphql_string(_normalize_script_text(script))]
     elif command:
         resolved_arguments = ["-c", _escape_graphql_string(_normalize_script_text(command))]
 
     if not resolved_arguments:
-        raise ValueError("Job payload requires either arguments, command, script, or script_path.")
+        raise ValueError(
+            "Job payload requires either arguments, command, script, script_path, or script_remote_path."
+        )
 
     attrs: Dict[str, Any] = dict(extra_attributes or {})
     if account:
@@ -103,6 +109,7 @@ def build_alcf_job_payload(
     command: str = "",
     script: str = "",
     script_path: str = "",
+    script_remote_path: str = "",
     custom_attributes: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     return build_job_payload(
@@ -119,6 +126,7 @@ def build_alcf_job_payload(
         command=command,
         script=script,
         script_path=script_path,
+        script_remote_path=script_remote_path,
         custom_attributes=custom_attributes,
     )
 

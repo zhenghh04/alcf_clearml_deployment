@@ -142,9 +142,17 @@ Task.enqueue(submit_task, queue_name="crux-services")
 - `command="..."`
 - `script="..."`
 - `script_path="/path/to/job.sh"`
+- `script_remote_path="/eagle/.../job.sh"`
 - `arguments=[...]`
 - `custom_attributes={...}`
 - `extra_attributes={...}`
+
+For ALCF specifically, a short inline `command` is usually fine, but sending a long script body through the API can trigger upstream filtering. The more reliable pattern is:
+
+- copy the script onto a facility-visible filesystem such as `/eagle/...`
+- submit with `script_remote_path="/eagle/.../job.sh"`
+
+The example [iri_submit_script.py](/Users/huihuo.zheng/Documents/Research/AmSC/clearml/alcf_clearml_deployment/examples/job_launching/iri/python/iri_submit_script.py) now uses that mode.
 
 Expected output includes:
 

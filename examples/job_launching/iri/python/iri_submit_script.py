@@ -1,4 +1,5 @@
 import sys
+import os
 from pathlib import Path
 
 from clearml import Task
@@ -13,6 +14,7 @@ from clearml_iri_bridge import IRILauncher, build_job_payload
 
 def main() -> int:
     launcher = IRILauncher()
+    remote_script_path = os.getenv("IRI_REMOTE_SCRIPT_PATH", "/eagle/datascience/hzheng/job.sh")
     job_payload = build_job_payload(
         scheduler="pbs",
         name="clearml-iri-job",
@@ -23,7 +25,7 @@ def main() -> int:
         queue_name="debug",
         duration=300,
         custom_attributes={"filesystems": "home:eagle"},
-        script_path="./job.sh",
+        script_remote_path=remote_script_path,
     )
     submit_task = launcher.create(
         project_name="AmSC/pipeline-iri-bridge",
