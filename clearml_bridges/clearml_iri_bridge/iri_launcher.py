@@ -1,5 +1,6 @@
 import json
 import os
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 from clearml import Task
@@ -118,10 +119,10 @@ class IRILauncher:
             argparse_args.append(("result-path-template", result_path_template))
         if job_payload and job_payload_file:
             raise ValueError("Pass only one of job_payload or job_payload_file.")
+        if job_payload_file:
+            job_payload = json.loads(Path(job_payload_file).read_text())
         if job_payload:
             argparse_args.append(("job-payload-json", json.dumps(job_payload)))
-        if job_payload_file:
-            argparse_args.append(("job-payload-file", job_payload_file))
         if headers:
             argparse_args.append(("headers-json", json.dumps(headers)))
         if terminal_states:
