@@ -429,6 +429,7 @@ def main() -> None:
     logger.report_text(f"[iri] submit_url={submit_url}")
     logger.report_text(f"[iri] auth_header_present={args.auth_header_name in headers}")
     logger.report_text(f"[iri] system={system} resolved_system={resolved_system}")
+    logger.report_text(f"[iri] payload={json.dumps(payload, sort_keys=True)}")
     submit_response = request_json(
         session=session,
         method=args.method.upper(),
