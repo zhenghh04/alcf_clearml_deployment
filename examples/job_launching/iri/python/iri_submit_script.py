@@ -16,6 +16,7 @@ def main() -> int:
     launcher = IRILauncher()
     job_payload = build_job_payload(
         scheduler="pbs",
+        name="clearml-iri-job",
         directory="/home/hzheng/",
         stdout_path="/home/hzheng/iri.out",
         stderr_path="/home/hzheng/iri.err",
