@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 import shlex
+import tempfile
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -25,6 +26,22 @@ def clean_str(value: Any) -> str:
     if normalized.lower() in {"", "none", "null"}:
         return ""
     return normalized
+
+
+def resolve_artifact_path(raw_path: str) -> Path:
+    path = Path(raw_path)
+    if path.is_absolute():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        return path
+
+    try:
+        base_dir = Path.cwd()
+    except FileNotFoundError:
+        base_dir = Path(tempfile.gettempdir())
+
+    resolved = base_dir / path
+    resolved.parent.mkdir(parents=True, exist_ok=True)
+    return resolved
 
 
 def parse_json_object(raw: str, arg_name: str) -> Dict[str, Any]:
@@ -830,7 +847,7 @@ def main() -> None:
         "final_response": final_payload,
         "result_value": result_value,
     }
-    artifact_path = Path(args.artifact_path)
+    artifact_path = resolve_artifact_path(args.artifact_path)
     artifact_path.write_text(json.dumps(output, indent=2, sort_keys=True))
     task.upload_artifact(name="iri_result", artifact_object=str(artifact_path))
     upload_job_output_artifact(
