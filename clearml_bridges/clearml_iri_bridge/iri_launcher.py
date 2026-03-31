@@ -63,6 +63,7 @@ class IRILauncher:
         result_path_template: str = "",
         method: str = "POST",
         job_payload: Optional[Dict[str, Any]] = None,
+        job_payload_file: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         id_field: str = "id",
         status_field: str = "status",
@@ -115,8 +116,12 @@ class IRILauncher:
             argparse_args.append(("result-field", result_field))
         if result_path_template:
             argparse_args.append(("result-path-template", result_path_template))
+        if job_payload and job_payload_file:
+            raise ValueError("Pass only one of job_payload or job_payload_file.")
         if job_payload:
             argparse_args.append(("job-payload-json", json.dumps(job_payload)))
+        if job_payload_file:
+            argparse_args.append(("job-payload-file", job_payload_file))
         if headers:
             argparse_args.append(("headers-json", json.dumps(headers)))
         if terminal_states:
@@ -209,6 +214,7 @@ def _build_parser() -> Any:
     parser.add_argument("--result-path-template", default="")
     parser.add_argument("--method", default="POST")
     parser.add_argument("--job-payload-json", default="")
+    parser.add_argument("--job-payload-file", default="")
     parser.add_argument("--headers-json", default="")
     parser.add_argument("--id-field", default="id")
     parser.add_argument("--status-field", default="status.state")
@@ -231,6 +237,8 @@ def main() -> int:
     args = parser.parse_args()
 
     launcher = IRILauncher()
+    if args.job_payload_json and args.job_payload_file:
+        raise ValueError("Pass only one of --job-payload-json or --job-payload-file.")
     job_payload = json.loads(args.job_payload_json) if args.job_payload_json else None
     headers = json.loads(args.headers_json) if args.headers_json else None
     terminal_states = json.loads(args.terminal_states_json) if args.terminal_states_json else None
@@ -251,6 +259,7 @@ def main() -> int:
         result_path_template=args.result_path_template or "",
         method=args.method,
         job_payload=job_payload,
+        job_payload_file=args.job_payload_file or None,
         headers=headers,
         id_field=args.id_field,
         status_field=args.status_field,
