@@ -16,7 +16,6 @@ def main() -> int:
     launcher = IRILauncher()
     job_payload = build_job_payload(
         scheduler="pbs",
-        name="clearml-iri-job",
         directory="/home/hzheng/",
         stdout_path="/home/hzheng/iri.out",
         stderr_path="/home/hzheng/iri.err",
@@ -24,7 +23,7 @@ def main() -> int:
         queue_name="debug",
         duration=300,
         custom_attributes={"filesystems": "home:eagle"},
-        script_remote_path="/home/hzheng/clearml/alcf_clearml_deployment/examples/job_launching/iri/python/job.sh"
+        script_path="/home/hzheng/clearml/alcf_clearml_deployment/examples/job_launching/iri/python/job.sh",
     )
     submit_task = launcher.create(
         project_name="AmSC/pipeline-iri-bridge",

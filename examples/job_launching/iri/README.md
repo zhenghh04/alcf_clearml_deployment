@@ -6,6 +6,9 @@ Available examples:
 
 - CLI example: [cli/run.sh](/Users/huihuo.zheng/Documents/Research/AmSC/clearml/alcf_clearml_deployment/examples/job_launching/iri/cli/run.sh)
 - Python example: [python/launch_iri_job.py](/Users/huihuo.zheng/Documents/Research/AmSC/clearml/alcf_clearml_deployment/examples/job_launching/iri/python/launch_iri_job.py)
+- Stage-in with Globus example: [python/iri_stage_with_globus.py](/Users/huihuo.zheng/Documents/Research/AmSC/clearml/alcf_clearml_deployment/examples/job_launching/iri/python/iri_stage_with_globus.py)
+- Stage-in with Globus pipeline: [python/iri_stage_with_globus_pipeline.py](/Users/huihuo.zheng/Documents/Research/AmSC/clearml/alcf_clearml_deployment/examples/job_launching/iri/python/iri_stage_with_globus_pipeline.py)
+- Local Globus setup: [python/LOCAL_GLOBUS_TRANSFER_SETUP.md](/Users/huihuo.zheng/Documents/Research/AmSC/clearml/alcf_clearml_deployment/examples/job_launching/iri/python/LOCAL_GLOBUS_TRANSFER_SETUP.md)
 
 ## Prerequisites
 
@@ -109,7 +112,6 @@ from clearml_iri_bridge import IRILauncher, build_job_payload
 launcher = IRILauncher()
 job_payload = build_job_payload(
     scheduler="pbs",
-    name="clearml-iri-job",
     directory="/eagle/datascience/hzheng/",
     stdout_path="/eagle/datascience/hzheng/iri.out",
     stderr_path="/eagle/datascience/hzheng/iri.err",
@@ -149,10 +151,32 @@ Task.enqueue(submit_task, queue_name="crux-services")
 
 For ALCF specifically, a short inline `command` is usually fine, but sending a long script body through the API can trigger upstream filtering. The more reliable pattern is:
 
-- copy the script onto a facility-visible filesystem such as `/eagle/...`
-- submit with `script_remote_path="/eagle/.../job.sh"`
+- make the script available on the remote filesystem
+- submit with `script_path="relative/path/to/job.sh"` or `script_path="/absolute/path/on/remote/job.sh"`
 
 The example [iri_submit_script.py](/Users/huihuo.zheng/Documents/Research/AmSC/clearml/alcf_clearml_deployment/examples/job_launching/iri/python/iri_submit_script.py) now uses that mode.
+
+If the script starts on your local machine and must be staged to the facility first, use the Globus stage-in example:
+
+- [iri_stage_with_globus.py](/Users/huihuo.zheng/Documents/Research/AmSC/clearml/alcf_clearml_deployment/examples/job_launching/iri/python/iri_stage_with_globus.py)
+- [iri_stage_with_globus_pipeline.py](/Users/huihuo.zheng/Documents/Research/AmSC/clearml/alcf_clearml_deployment/examples/job_launching/iri/python/iri_stage_with_globus_pipeline.py)
+- [LOCAL_GLOBUS_TRANSFER_SETUP.md](/Users/huihuo.zheng/Documents/Research/AmSC/clearml/alcf_clearml_deployment/examples/job_launching/iri/python/LOCAL_GLOBUS_TRANSFER_SETUP.md)
+
+Start with the setup note if your source file lives on your laptop or desktop and needs to be transferred through Globus before the IRI job can run.
+
+The simple stage-in example:
+
+- creates and enqueues a `GlobusDataMover` task to copy the local file to the remote destination
+- creates the IRI submit task pointing `script_path` at the staged remote file
+- prints both task URLs so you can enqueue the IRI task after the transfer completes
+- uses explicit Python constants at the top of the file for endpoints, paths, and queues instead of environment variables
+
+The pipeline variant:
+
+- creates the same transfer task and IRI submit task templates
+- wires them together in a `PipelineController`
+- runs the transfer step first and the IRI step second
+- starts the pipeline on the configured controller queue automatically
 
 For script-based launches, the bridge now uses a login shell path so the runtime is closer to normal PBS `qsub` behavior:
 

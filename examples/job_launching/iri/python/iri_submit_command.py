@@ -15,7 +15,6 @@ def main() -> int:
     launcher = IRILauncher()
     job_payload = build_job_payload(
         scheduler="pbs",
-        name="clearml-iri-job",
         directory="/eagle/datascience/hzheng/",
         stdout_path="/eagle/datascience/hzheng/iri.out",
         stderr_path="/eagle/datascience/hzheng/iri.err",

@@ -28,6 +28,32 @@ def _normalize_script_text(script_text: str) -> str:
     return "; ".join(lines)
 
 
+def _normalize_precommands(
+    precommand: str = "",
+    precommands: Optional[list[str]] = None,
+) -> str:
+    commands = []
+    normalized_precommand = precommand.strip()
+    if normalized_precommand:
+        commands.append(normalized_precommand)
+    if precommands:
+        for item in precommands:
+            normalized = str(item).strip()
+            if normalized:
+                commands.append(normalized)
+    normalized = []
+    for command in commands:
+        text = _normalize_script_text(command)
+        if text:
+            normalized.append(text)
+    return "; ".join(normalized)
+
+
+def _combine_shell_text(prelude: str, main: str) -> str:
+    parts = [part for part in (prelude, main) if part]
+    return "; ".join(parts)
+
+
 def build_job_payload(
     *,
     scheduler: str,
@@ -41,6 +67,8 @@ def build_job_payload(
     script: str = "",
     script_path: str = "",
     script_remote_path: str = "",
+    precommand: str = "",
+    precommands: Optional[list[str]] = None,
     account: str = "",
     queue_name: str = "",
     duration: Optional[int] = None,
@@ -55,16 +83,17 @@ def build_job_payload(
         raise ValueError("Pass either arguments or command/script/script_path/script_remote_path, not both.")
 
     resolved_arguments = list(arguments or [])
+    prelude = _normalize_precommands(precommand, precommands)
     if sum(bool(value) for value in (script, script_path, script_remote_path)) > 1:
         raise ValueError("Pass only one of script, script_path, or script_remote_path.")
-    if script_path:
-        script = Path(script_path).read_text(encoding="utf-8")
-    if script_remote_path:
-        resolved_arguments = ["-lc", f"/bin/bash -l {shlex.quote(script_remote_path)}"]
+    remote_script_path = script_path or script_remote_path
+    if remote_script_path:
+        remote_command = f"/bin/bash -l {shlex.quote(remote_script_path)}"
+        resolved_arguments = ["-lc", _combine_shell_text(prelude, remote_command)]
     elif script:
-        resolved_arguments = ["-lc", _escape_graphql_string(_normalize_script_text(script))]
+        resolved_arguments = ["-lc", _escape_graphql_string(_combine_shell_text(prelude, _normalize_script_text(script)))]
     elif command:
-        resolved_arguments = ["-lc", _escape_graphql_string(_normalize_script_text(command))]
+        resolved_arguments = ["-lc", _escape_graphql_string(_combine_shell_text(prelude, _normalize_script_text(command)))]
 
     if not resolved_arguments:
         raise ValueError(
@@ -84,7 +113,7 @@ def build_job_payload(
         # Preserve the scheduler choice for bridges that need to branch later.
         attrs.setdefault("scheduler", "slurm")
 
-    return {
+    payload = {
         "name": name,
         "executable": executable,
         "arguments": resolved_arguments,
@@ -93,6 +122,7 @@ def build_job_payload(
         "stderr_path": stderr_path,
         "attributes": attrs,
     }
+    return payload
 
 
 def build_alcf_job_payload(
@@ -110,6 +140,8 @@ def build_alcf_job_payload(
     script: str = "",
     script_path: str = "",
     script_remote_path: str = "",
+    precommand: str = "",
+    precommands: Optional[list[str]] = None,
     custom_attributes: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     return build_job_payload(
@@ -127,6 +159,8 @@ def build_alcf_job_payload(
         script=script,
         script_path=script_path,
         script_remote_path=script_remote_path,
+        precommand=precommand,
+        precommands=precommands,
         custom_attributes=custom_attributes,
     )
 
@@ -201,6 +235,7 @@ class IRILauncher:
         launcher_script: Optional[str] = None,
         launcher_binary: str = "python",
         launcher_working_directory: Optional[str] = None,
+        clone_repo_on_job: bool = True,
         user_properties: Optional[Dict[str, Any]] = None,
         tags: Optional[list[str]] = None,
     ) -> Task:

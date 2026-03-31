@@ -155,6 +155,8 @@ submit_task = launcher.create(
 )
 ```
 
+For shell-based job payloads, `IRILauncher.create(...)` also prepends a default job-side repo checkout step when `repo=...` is provided. The injected precommand creates the payload `directory`, clones the repository there if needed, and then changes into the cloned checkout before the main command or script runs. Pass `clone_repo_on_job=False` to disable that behavior.
+
 ## Environment
 
 Required:

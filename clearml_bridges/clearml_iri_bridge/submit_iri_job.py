@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import shlex
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -58,26 +59,68 @@ def _normalize_script_text(script_text: str) -> str:
     return "; ".join(lines)
 
 
+def _normalize_precommands(
+    precommand: str = "",
+    precommands: Optional[List[str]] = None,
+) -> str:
+    commands = []
+    normalized_precommand = clean_str(precommand)
+    if normalized_precommand:
+        commands.append(normalized_precommand)
+    if precommands:
+        for item in precommands:
+            normalized = clean_str(item)
+            if normalized:
+                commands.append(normalized)
+
+    normalized_commands = []
+    for command in commands:
+        text = _normalize_script_text(command)
+        if text:
+            normalized_commands.append(text)
+    return "; ".join(normalized_commands)
+
+
+def _combine_shell_text(prelude: str, main: str) -> str:
+    parts = [part for part in (prelude, main) if part]
+    return "; ".join(parts)
+
+
 def normalize_job_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     normalized = dict(payload)
     script = clean_str(normalized.pop("script", ""))
     script_path = clean_str(normalized.pop("script_path", ""))
+    script_remote_path = clean_str(normalized.pop("script_remote_path", ""))
     command = clean_str(normalized.pop("command", ""))
+    precommand = clean_str(normalized.pop("precommand", ""))
+    precommands_raw = normalized.pop("precommands", [])
+    if precommands_raw and not isinstance(precommands_raw, list):
+        raise ValueError("Payload field 'precommands' must be a list of strings.")
+    prelude = _normalize_precommands(precommand, precommands_raw or None)
 
     arguments = normalized.get("arguments")
-    if arguments and (script or script_path or command):
-        raise ValueError("Payload cannot include both arguments and script/script_path/command.")
-    if script and script_path:
-        raise ValueError("Payload cannot include both script and script_path.")
+    if arguments and (script or script_path or script_remote_path or command):
+        raise ValueError("Payload cannot include both arguments and script/script_path/script_remote_path/command.")
+    if script and (script_path or script_remote_path):
+        raise ValueError("Payload cannot include both script and script_path/script_remote_path.")
+    if script_path and script_remote_path:
+        raise ValueError("Payload cannot include both script_path and script_remote_path.")
 
-    if script_path:
-        script = Path(script_path).read_text(encoding="utf-8")
-    elif command:
+    if command:
         script = command
+    remote_script_path = script_path or script_remote_path
 
-    if script:
+    if remote_script_path:
         normalized.setdefault("executable", "/bin/bash")
-        normalized["arguments"] = ["-c", _escape_graphql_string(_normalize_script_text(script))]
+        normalized["arguments"] = [
+            "-c",
+            _escape_graphql_string(
+                _combine_shell_text(prelude, f"/bin/bash -l {shlex.quote(remote_script_path)}")
+            ),
+        ]
+    elif script:
+        normalized.setdefault("executable", "/bin/bash")
+        normalized["arguments"] = ["-c", _escape_graphql_string(_combine_shell_text(prelude, _normalize_script_text(script)))]
     elif (
         normalized.get("executable") == "/bin/bash"
         and isinstance(arguments, list)
@@ -87,8 +130,13 @@ def normalize_job_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
     ):
         normalized["arguments"] = [
             "-c",
-            _escape_graphql_string(_normalize_script_text(arguments[1])),
+            _escape_graphql_string(_combine_shell_text(prelude, _normalize_script_text(arguments[1]))),
         ]
+    elif prelude:
+        raise ValueError(
+            "Payload field 'precommand' requires a shell-based payload using command, script, "
+            "script_path, or executable=/bin/bash with arguments ['-c'|'-lc', ...]."
+        )
 
     return normalized
 
