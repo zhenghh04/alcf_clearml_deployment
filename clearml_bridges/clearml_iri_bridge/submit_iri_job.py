@@ -9,6 +9,12 @@ from urllib.parse import urljoin
 import requests
 from clearml import Task
 
+FACILITY_BASE_URLS = {
+    "alcf": "https://api.alcf.anl.gov",
+    "nersc": "https://api.nersc.gov",
+    "olcf": "https://s3m.olcf.ornl.gov",
+}
+
 
 def clean_str(value: Any) -> str:
     if value is None:
@@ -40,88 +46,106 @@ def parse_json_list(raw: str, arg_name: str, default: List[str]) -> List[str]:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--project-name",
+        "--project-name", "--project_name",
         default=os.getenv("CLEARML_PROJECT_NAME", "amsc/pipeline-iri-bridge"),
     )
     parser.add_argument(
-        "--task-name",
+        "--task-name", "--task_name",
         default=os.getenv("CLEARML_TASK_NAME", "submit-iri-job"),
     )
     parser.add_argument(
-        "--task-type",
+        "--task-type", "--task_type",
         default=os.getenv("CLEARML_TASK_TYPE", "data_processing"),
     )
     parser.add_argument(
-        "--api-base-url",
-        default=os.getenv("IRI_API_BASE_URL", "https://api.iri.nersc.gov"),
+        "--facility",
+        default=os.getenv("IRI_FACILITY", ""),
+        help="Named IRI deployment to target: alcf, nersc, or olcf.",
     )
     parser.add_argument(
-        "--submit-path",
-        default=os.getenv("IRI_SUBMIT_PATH", "/jobs"),
+        "--system",
+        default=os.getenv("IRI_SYSTEM", os.getenv("IRI_RESOURCE_ID", "")),
+        help="Target system name or resource identifier used in /api/v1/compute/* paths.",
     )
     parser.add_argument(
-        "--status-path-template",
-        default=os.getenv("IRI_STATUS_PATH_TEMPLATE", "/jobs/{job_id}"),
+        "--submit-path", "--submit_path",
+        default=os.getenv("IRI_SUBMIT_PATH", "/api/v1/compute/job/{system}"),
     )
     parser.add_argument(
-        "--result-path-template",
+        "--status-path-template", "--status_path_template",
+        default=os.getenv("IRI_STATUS_PATH_TEMPLATE", "/api/v1/compute/status/{system}/{job_id}"),
+    )
+    parser.add_argument(
+        "--result-path-template", "--result_path_template",
         default=os.getenv("IRI_RESULT_PATH_TEMPLATE", ""),
     )
     parser.add_argument(
         "--method",
         default=os.getenv("IRI_SUBMIT_METHOD", "POST"),
     )
-    parser.add_argument("--job-payload-json", default=os.getenv("IRI_JOB_PAYLOAD_JSON", ""))
-    parser.add_argument("--job-payload-file", default=os.getenv("IRI_JOB_PAYLOAD_FILE", ""))
-    parser.add_argument("--headers-json", default=os.getenv("IRI_HEADERS_JSON", ""))
+    parser.add_argument("--job-payload-json", "--job_payload_json", default=os.getenv("IRI_JOB_PAYLOAD_JSON", ""))
+    parser.add_argument("--job-payload-file", "--job_payload_file", default=os.getenv("IRI_JOB_PAYLOAD_FILE", ""))
+    parser.add_argument("--headers-json", "--headers_json", default=os.getenv("IRI_HEADERS_JSON", ""))
     parser.add_argument(
-        "--id-field",
+        "--id-field", "--id_field",
         default=os.getenv("IRI_JOB_ID_FIELD", "id"),
         help="Dot path for job id, e.g. id or data.job_id",
     )
     parser.add_argument(
-        "--status-field",
-        default=os.getenv("IRI_STATUS_FIELD", "status"),
-        help="Dot path for status, e.g. status or data.state",
+        "--status-field", "--status_field",
+        default=os.getenv("IRI_STATUS_FIELD", "status.state"),
+        help="Dot path for status, e.g. status.state or data.state",
     )
     parser.add_argument(
-        "--result-field",
+        "--result-field", "--result_field",
         default=os.getenv("IRI_RESULT_FIELD", ""),
         help="Optional dot path for a result value in the final response payload.",
     )
     parser.add_argument(
-        "--terminal-states-json",
+        "--terminal-states-json", "--terminal_states_json",
         default=os.getenv(
             "IRI_TERMINAL_STATES_JSON",
-            '["SUCCEEDED","COMPLETED","FAILED","ERROR","CANCELLED"]',
+            '["COMPLETED","FAILED","CANCELED"]',
         ),
     )
     parser.add_argument(
-        "--success-states-json",
-        default=os.getenv("IRI_SUCCESS_STATES_JSON", '["SUCCEEDED","COMPLETED"]'),
+        "--success-states-json", "--success_states_json",
+        default=os.getenv("IRI_SUCCESS_STATES_JSON", '["COMPLETED"]'),
     )
-    parser.add_argument("--poll-interval", type=int, default=int(os.getenv("IRI_POLL_INTERVAL", "10")))
-    parser.add_argument("--timeout-sec", type=int, default=int(os.getenv("IRI_TIMEOUT_SEC", "1800")))
+    parser.add_argument("--poll-interval", "--poll_interval", type=int, default=int(os.getenv("IRI_POLL_INTERVAL", "10")))
+    parser.add_argument("--timeout-sec", "--timeout_sec", type=int, default=int(os.getenv("IRI_TIMEOUT_SEC", "1800")))
     parser.add_argument(
-        "--request-timeout-sec",
+        "--request-timeout-sec", "--request_timeout_sec",
         type=int,
         default=int(os.getenv("IRI_REQUEST_TIMEOUT_SEC", "60")),
     )
-    parser.add_argument("--artifact-path", default=os.getenv("IRI_ARTIFACT_PATH", "iri_result.json"))
+    parser.add_argument("--artifact-path", "--artifact_path", default=os.getenv("IRI_ARTIFACT_PATH", "iri_result.json"))
     parser.add_argument(
-        "--auth-token",
+        "--auth-token", "--auth_token",
         default=os.getenv("IRI_API_TOKEN", ""),
         help="Token value only; prefix is controlled by --auth-token-prefix",
     )
     parser.add_argument(
-        "--auth-header-name",
+        "--auth-header-name", "--auth_header_name",
         default=os.getenv("IRI_AUTH_HEADER_NAME", "Authorization"),
     )
     parser.add_argument(
-        "--auth-token-prefix",
+        "--auth-token-prefix", "--auth_token_prefix",
         default=os.getenv("IRI_AUTH_TOKEN_PREFIX", "Bearer "),
     )
     return parser.parse_args()
+
+
+def resolve_api_base_url(facility: str) -> str:
+    normalized = clean_str(facility).lower()
+    if not normalized:
+        raise ValueError(
+            "IRI facility is required. Pass --facility alcf|nersc|olcf or export IRI_FACILITY."
+        )
+    if normalized not in FACILITY_BASE_URLS:
+        supported = ", ".join(sorted(FACILITY_BASE_URLS))
+        raise ValueError(f"Unsupported facility '{normalized}'. Use one of: {supported}.")
+    return FACILITY_BASE_URLS[normalized]
 
 
 def read_nested(payload: Dict[str, Any], dot_path: str) -> Any:
@@ -167,6 +191,16 @@ def parse_status(payload: Dict[str, Any], status_field: str) -> str:
 
 def make_url(base_url: str, path: str) -> str:
     return urljoin(base_url.rstrip("/") + "/", path.lstrip("/"))
+
+
+def format_path_template(template: str, **values: str) -> str:
+    try:
+        return template.format(**values)
+    except KeyError as exc:
+        missing = exc.args[0]
+        raise ValueError(
+            f"Missing path parameter '{missing}' required by template '{template}'"
+        ) from exc
 
 
 def request_json(
@@ -233,6 +267,7 @@ def main() -> None:
     args = parse_args()
     project_name = clean_str(args.project_name) or "amsc/pipeline-iri-bridge"
     task_name = clean_str(args.task_name) or "submit-iri-job"
+    api_base_url = resolve_api_base_url(args.facility)
     task = Task.init(
         project_name=project_name,
         task_name=task_name,
@@ -245,18 +280,24 @@ def main() -> None:
     terminal_states = parse_json_list(
         args.terminal_states_json,
         "--terminal-states-json",
-        default=["SUCCEEDED", "COMPLETED", "FAILED", "ERROR", "CANCELLED"],
+        default=["COMPLETED", "FAILED", "CANCELED"],
     )
     success_states = {
         s.upper()
         for s in parse_json_list(
             args.success_states_json,
             "--success-states-json",
-            default=["SUCCEEDED", "COMPLETED"],
+            default=["COMPLETED"],
         )
     }
+    system = clean_str(args.system)
+    if not system:
+        raise ValueError("IRI system is required. Pass --system or export IRI_SYSTEM.")
 
-    submit_url = make_url(args.api_base_url, args.submit_path)
+    submit_url = make_url(
+        api_base_url,
+        format_path_template(args.submit_path, system=system, resource_id=system),
+    )
     session = requests.Session()
 
     logger.report_text(f"[iri] submit_url={submit_url}")
@@ -272,7 +313,15 @@ def main() -> None:
     job_id = parse_job_id(submit_response, args.id_field)
     logger.report_text(f"[iri] job_id={job_id}")
 
-    status_url = make_url(args.api_base_url, args.status_path_template.format(job_id=job_id))
+    status_url = make_url(
+        api_base_url,
+        format_path_template(
+            args.status_path_template,
+            system=system,
+            resource_id=system,
+            job_id=job_id,
+        ),
+    )
     status, status_payload, elapsed = poll_until_terminal(
         session=session,
         status_url=status_url,
@@ -287,7 +336,15 @@ def main() -> None:
 
     final_payload = status_payload
     if args.result_path_template:
-        result_url = make_url(args.api_base_url, args.result_path_template.format(job_id=job_id))
+        result_url = make_url(
+            api_base_url,
+            format_path_template(
+                args.result_path_template,
+                system=system,
+                resource_id=system,
+                job_id=job_id,
+            ),
+        )
         final_payload = request_json(
             session=session,
             method="GET",
@@ -298,6 +355,8 @@ def main() -> None:
 
     result_value = read_nested(final_payload, args.result_field) if args.result_field else None
     output = {
+        "system": system,
+        "resource_id": system,
         "job_id": job_id,
         "status": status,
         "elapsed_sec": elapsed,

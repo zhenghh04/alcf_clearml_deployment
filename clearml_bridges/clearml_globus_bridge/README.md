@@ -193,6 +193,51 @@ clearml-globus-configure-slurm-endpoint --endpoint-name my-slurm-endpoint
 
 These commands create/update `config.yaml` and `user_config_template.yaml.j2` under `~/.globus_compute/<endpoint-name>/`.
 
+Example `--endpoint-config-json` values:
+
+For a Slurm-backed endpoint:
+
+```bash
+clearml-globus-submit \
+  --endpoint-id "$GLOBUS_COMPUTE_ENDPOINT_ID" \
+  --script /path/on/endpoint/job.sh \
+  --binary /bin/bash \
+  --endpoint-config-json '{
+    "account": "AmSC_Demos",
+    "partition": "debug",
+    "qos": "normal",
+    "walltime": "00:10:00",
+    "num_nodes": 1,
+    "cores_per_node": 64,
+    "gpus_per_node": 0,
+    "constraint": "",
+    "worker_init": "module load python"
+  }'
+```
+
+For a PBS-backed endpoint:
+
+```bash
+clearml-globus-submit \
+  --endpoint-name crux \
+  --script ./job.sh \
+  --binary /bin/bash \
+  --endpoint-config-json '{
+    "account": "datascience",
+    "queue": "workq",
+    "walltime": "00:10:00",
+    "num_nodes": 1,
+    "filesystems": "flare:home",
+    "place": "scatter",
+    "worker_init": "module load python"
+  }'
+```
+
+Supported keys come from the generated `user_config_template.yaml.j2` for the endpoint type. Commonly useful keys are:
+
+- Slurm: `account`, `partition`, `qos`, `walltime`, `num_nodes`, `cores_per_node`, `gpus_per_node`, `constraint`, `worker_init`, `init_blocks`, `min_blocks`, `max_blocks`
+- PBS: `account`, `queue`, `walltime`, `num_nodes`, `cores_per_node`, `filesystems`, `place`, `worker_init`, `init_blocks`, `min_blocks`, `max_blocks`
+
 ## Related Examples
 
 - `examples/pipeline/globus_compute_bridge/pipeline.py`

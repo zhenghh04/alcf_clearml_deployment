@@ -5,8 +5,20 @@ from typing import Any, Dict, Optional
 from clearml import Task
 
 
+FACILITY_BASE_URLS = {
+    "alcf": "https://api.alcf.anl.gov",
+    "nersc": "https://api.nersc.gov",
+    "olcf": "https://s3m.olcf.ornl.gov",
+}
+
+
 class IRILauncher:
     """Create ClearML tasks that submit work to an IRI-compatible facility API."""
+
+    DEFAULT_PACKAGES = [
+        "clearml>=2.1.3",
+        "requests>=2.31.0",
+    ]
 
     @staticmethod
     def _task_type_to_cli_value(task_type: Any) -> str:
@@ -14,6 +26,25 @@ class IRILauncher:
         if value:
             return str(value)
         return str(task_type)
+
+    @staticmethod
+    def _resolve_facility(facility: Optional[str], api_base_url: Optional[str]) -> tuple[str, str]:
+        selected_facility = (facility or os.getenv("IRI_FACILITY", "")).strip().lower()
+        if selected_facility:
+            if selected_facility not in FACILITY_BASE_URLS:
+                supported = ", ".join(sorted(FACILITY_BASE_URLS))
+                raise ValueError(
+                    f"Unsupported facility '{selected_facility}'. Use one of: {supported}."
+                )
+            return selected_facility, FACILITY_BASE_URLS[selected_facility]
+
+        selected_api_base_url = (api_base_url or os.getenv("IRI_API_BASE_URL", "")).strip()
+        if not selected_api_base_url:
+            raise ValueError(
+                "IRI facility is required. Pass facility='alcf'|'nersc'|'olcf' "
+                "or export IRI_FACILITY."
+            )
+        return "custom", selected_api_base_url
 
     def create(
         self,
@@ -23,7 +54,9 @@ class IRILauncher:
         branch: str,
         working_directory: str,
         task_type: Task.TaskTypes = Task.TaskTypes.data_processing,
+        facility: Optional[str] = None,
         api_base_url: Optional[str] = None,
+        system: Optional[str] = None,
         submit_path: Optional[str] = None,
         status_path_template: Optional[str] = None,
         result_path_template: str = "",
@@ -48,19 +81,23 @@ class IRILauncher:
         user_properties: Optional[Dict[str, Any]] = None,
         tags: Optional[list[str]] = None,
     ) -> Task:
-        selected_api_base_url = api_base_url or os.getenv("IRI_API_BASE_URL")
-        selected_submit_path = submit_path or os.getenv("IRI_SUBMIT_PATH", "/jobs")
-        selected_status_path_template = status_path_template or os.getenv(
-            "IRI_STATUS_PATH_TEMPLATE", "/jobs/{job_id}"
+        selected_facility, selected_api_base_url = self._resolve_facility(facility, api_base_url)
+        selected_system = system or os.getenv("IRI_SYSTEM") or os.getenv("IRI_RESOURCE_ID")
+        selected_submit_path = submit_path or os.getenv(
+            "IRI_SUBMIT_PATH", "/api/v1/compute/job/{system}"
         )
-        if not selected_api_base_url:
-            raise ValueError("IRI API base URL is required. Pass api_base_url or export IRI_API_BASE_URL.")
+        selected_status_path_template = status_path_template or os.getenv(
+            "IRI_STATUS_PATH_TEMPLATE", "/api/v1/compute/status/{system}/{job_id}"
+        )
+        if not selected_system:
+            raise ValueError("IRI system is required. Pass system or export IRI_SYSTEM.")
 
         argparse_args = [
             ("project-name", project_name),
             ("task-name", task_name),
             ("task-type", self._task_type_to_cli_value(task_type)),
-            ("api-base-url", selected_api_base_url),
+            ("facility", selected_facility),
+            ("system", selected_system),
             ("submit-path", selected_submit_path),
             ("status-path-template", selected_status_path_template),
             ("method", method),
@@ -95,20 +132,30 @@ class IRILauncher:
             "working_directory": launcher_working_directory or working_directory,
             "binary": launcher_binary,
             "argparse_args": argparse_args,
+            "packages": list(self.DEFAULT_PACKAGES),
         }
         if launcher_script:
             create_kwargs["script"] = launcher_script
+            create_kwargs["force_single_script_file"] = True
         else:
             create_kwargs["module"] = launcher_module
-            create_kwargs["packages"] = ["-e ."]
 
         task = Task.create(**create_kwargs)
+        for param_name in ("bridge/auth_token", "Args/auth-token", "General/auth-token", "auth-token"):
+            try:
+                task.delete_parameter(param_name, force=True)
+            except Exception:
+                pass
 
         params_to_set: Dict[str, str] = {
-            "Args/api-base-url": selected_api_base_url,
+            "Args/facility": selected_facility,
+            "Args/system": selected_system,
             "Args/submit-path": selected_submit_path,
             "Args/status-path-template": selected_status_path_template,
+            "env:IRI_FACILITY": selected_facility,
             "env:IRI_API_BASE_URL": selected_api_base_url,
+            "env:IRI_SYSTEM": selected_system,
+            "env:IRI_RESOURCE_ID": selected_system,
             "env:IRI_SUBMIT_PATH": selected_submit_path,
             "env:IRI_STATUS_PATH_TEMPLATE": selected_status_path_template,
         }
@@ -127,3 +174,103 @@ class IRILauncher:
             task.set_tags(tags)
 
         return task
+
+
+def _parse_task_type(value: str) -> Task.TaskTypes:
+    normalized = value.strip()
+    if not normalized:
+        raise ValueError("task_type cannot be empty")
+    for task_type in Task.TaskTypes:
+        if task_type.value == normalized:
+            return task_type
+    raise ValueError(
+        f"Unsupported task type '{value}'. Use one of: "
+        + ", ".join(sorted(task_type.value for task_type in Task.TaskTypes))
+    )
+
+
+def _build_parser() -> Any:
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Create and optionally enqueue a ClearML task that submits work to an IRI API."
+    )
+    parser.add_argument("--project-name", required=True)
+    parser.add_argument("--task-name", required=True)
+    parser.add_argument("--repo", required=True)
+    parser.add_argument("--branch", default="main")
+    parser.add_argument("--working-directory", default=".")
+    parser.add_argument("--task-type", default=Task.TaskTypes.data_processing.value)
+    parser.add_argument("--facility", required=True, choices=sorted(FACILITY_BASE_URLS))
+    parser.add_argument("--system", required=True)
+    parser.add_argument("--submit-path", default="/api/v1/compute/job/{system}")
+    parser.add_argument("--status-path-template", default="/api/v1/compute/status/{system}/{job_id}")
+    parser.add_argument("--result-path-template", default="")
+    parser.add_argument("--method", default="POST")
+    parser.add_argument("--job-payload-json", default="")
+    parser.add_argument("--headers-json", default="")
+    parser.add_argument("--id-field", default="id")
+    parser.add_argument("--status-field", default="status.state")
+    parser.add_argument("--result-field", default="")
+    parser.add_argument("--terminal-states-json", default="")
+    parser.add_argument("--success-states-json", default="")
+    parser.add_argument("--poll-interval", type=int, default=10)
+    parser.add_argument("--timeout-sec", type=int, default=1800)
+    parser.add_argument("--request-timeout-sec", type=int, default=60)
+    parser.add_argument("--artifact-path", default="iri_result.json")
+    parser.add_argument("--auth-header-name", default="Authorization")
+    parser.add_argument("--auth-token-prefix", default="Bearer ")
+    parser.add_argument("--queue", default="")
+    parser.add_argument("--tags-json", default="")
+    return parser
+
+
+def main() -> int:
+    parser = _build_parser()
+    args = parser.parse_args()
+
+    launcher = IRILauncher()
+    job_payload = json.loads(args.job_payload_json) if args.job_payload_json else None
+    headers = json.loads(args.headers_json) if args.headers_json else None
+    terminal_states = json.loads(args.terminal_states_json) if args.terminal_states_json else None
+    success_states = json.loads(args.success_states_json) if args.success_states_json else None
+    tags = json.loads(args.tags_json) if args.tags_json else None
+
+    task = launcher.create(
+        project_name=args.project_name,
+        task_name=args.task_name,
+        repo=args.repo,
+        branch=args.branch,
+        working_directory=args.working_directory,
+        task_type=_parse_task_type(args.task_type),
+        facility=args.facility,
+        system=args.system,
+        submit_path=args.submit_path or None,
+        status_path_template=args.status_path_template or None,
+        result_path_template=args.result_path_template or "",
+        method=args.method,
+        job_payload=job_payload,
+        headers=headers,
+        id_field=args.id_field,
+        status_field=args.status_field,
+        result_field=args.result_field,
+        terminal_states=terminal_states,
+        success_states=success_states,
+        poll_interval=args.poll_interval,
+        timeout_sec=args.timeout_sec,
+        request_timeout_sec=args.request_timeout_sec,
+        artifact_path=args.artifact_path,
+        auth_header_name=args.auth_header_name,
+        auth_token_prefix=args.auth_token_prefix,
+        tags=tags,
+    )
+    if args.queue:
+        Task.enqueue(task, queue_name=args.queue)
+        print(f"Enqueued task: {task.id} on queue {args.queue}")
+    else:
+        print(f"Created task: {task.id}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

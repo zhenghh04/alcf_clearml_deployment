@@ -32,18 +32,6 @@ def main() -> int:
     )
 
 
-    submit_task.set_user_properties(
-        account="datascience",
-        queue="workq",
-        num_nodes=2,
-        cores_per_node=64,
-        walltime="00:10:00",
-        filesystems="eagle:home",
-        max_blocks=10,
-        min_blocks=0,
-        init_blocks=0,
-    )
-
 
     Task.enqueue(submit_task, queue_name="services")
     print(f"Enqueued task: {submit_task.id} on queue services")

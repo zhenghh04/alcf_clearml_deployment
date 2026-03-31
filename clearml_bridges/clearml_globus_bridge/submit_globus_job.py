@@ -8,9 +8,6 @@ from importlib import metadata
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from globus_compute_sdk import Executor
-from globus_compute_sdk.serialize import AllCodeStrategies, ComputeSerializer
-
 MIN_GLOBUS_SDK = (3, 59, 0)
 MIN_GLOBUS_COMPUTE_SDK = (4, 6, 0)
 
@@ -63,6 +60,20 @@ def ensure_runtime_packages() -> None:
             + "\nFix with:\n"
             + '  python -m pip install --upgrade "globus-sdk>=3.59.0,<4" "globus-compute-sdk>=4.6.0"'
         )
+
+
+def import_compute_runtime() -> tuple[Any, Any, Any]:
+    try:
+        from globus_compute_sdk import Executor
+        from globus_compute_sdk.serialize import AllCodeStrategies, ComputeSerializer
+    except ImportError as exc:
+        raise RuntimeError(
+            "Incompatible Globus package versions detected for Compute SDK.\n"
+            f"Original error: {exc}\n"
+            "Fix with:\n"
+            '  python -m pip install --upgrade "globus-sdk>=3.59.0,<4" "globus-compute-sdk>=4.6.0"'
+        ) from exc
+    return Executor, AllCodeStrategies, ComputeSerializer
 
 
 def collect_debug_env_snapshot() -> Dict[str, str]:
@@ -630,6 +641,7 @@ def main() -> int:
 
     output_value: Any = None
     compute_client = build_compute_client(access_token)
+    Executor, AllCodeStrategies, ComputeSerializer = import_compute_runtime()
     max_attempts = max(1, args.submit_retries + 1)
     for attempt in range(1, max_attempts + 1):
         try:

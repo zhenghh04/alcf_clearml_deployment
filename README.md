@@ -11,6 +11,7 @@ This repository contains how we deploy ClearML in ALCF, with all the setup scrip
  - [AWS deployment guide](docs/aws.md)
 - [Client setup guide](clients/README.md)
 - [Globus bridge package guide](clearml_bridges/clearml_globus_bridge/README.md)
+- [IRI bridge package guide](clearml_bridges/clearml_iri_bridge/README.md)
 - [Globus endpoint notes](clients/globus_endpoint_setup/README.md)
 - [Examples guide](examples/README.md)
 - [Compute guide](docs/compute.md)
@@ -177,6 +178,19 @@ After this setup, the ClearML agents listen on their assigned queues and pull an
 - Usage docs:
   - [clearml_bridges/clearml_globus_bridge/README.md](clearml_bridges/clearml_globus_bridge/README.md)
   - [examples/pipeline/globus_compute_bridge/README.md](examples/pipeline/globus_compute_bridge/README.md)
+
+#### IRI bridge
+
+- Install this repository as a package:
+  ```bash
+  pip install -e .
+  ```
+- This enables:
+  - `clearml-iri-launch`: create and optionally enqueue an IRI-backed ClearML task.
+  - `clearml-iri-submit`: submit to an IRI-compatible API, poll status, and upload the final response as a ClearML artifact.
+- Usage docs:
+  - [clearml_bridges/clearml_iri_bridge/README.md](clearml_bridges/clearml_iri_bridge/README.md)
+  - [examples/pipeline/iri_bridge/README.md](examples/pipeline/iri_bridge/README.md)
 
 ## Examples
 There is no single test runner; run the individual scripts in `examples/` as needed.
