@@ -4,6 +4,7 @@ import shlex
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+import requests
 from clearml import Task
 
 
@@ -12,6 +13,67 @@ FACILITY_BASE_URLS = {
     "nersc": "https://api.nersc.gov",
     "olcf": "https://s3m.olcf.ornl.gov",
 }
+
+
+def _looks_like_uuid(value: str) -> bool:
+    text = value.strip().lower()
+    parts = text.split("-")
+    if len(parts) != 5:
+        return False
+    expected_lengths = [8, 4, 4, 4, 12]
+    return all(len(part) == expected for part, expected in zip(parts, expected_lengths))
+
+
+def _build_auth_headers(auth_header_name: str, auth_token_prefix: str) -> Dict[str, str]:
+    token = (os.getenv("IRI_API_TOKEN") or "").strip()
+    if not token:
+        return {}
+    return {auth_header_name: f"{auth_token_prefix}{token}"}
+
+
+def _resolve_alcf_resource_id(
+    *,
+    api_base_url: str,
+    system: str,
+    auth_header_name: str,
+    auth_token_prefix: str,
+    request_timeout_sec: int,
+) -> str:
+    normalized_system = system.strip()
+    if not normalized_system or _looks_like_uuid(normalized_system):
+        return normalized_system
+
+    headers = _build_auth_headers(auth_header_name, auth_token_prefix)
+    if not headers:
+        return ""
+
+    resources_url = f"{api_base_url.rstrip('/')}/api/v1/status/resources?resource_type=compute"
+    try:
+        response = requests.get(resources_url, headers=headers, timeout=request_timeout_sec)
+        response.raise_for_status()
+        payload = response.json()
+    except Exception:
+        return ""
+
+    items = payload.get("resources")
+    if not isinstance(items, list):
+        return ""
+
+    target = normalized_system.lower()
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        candidate_id = str(item.get("id") or "").strip()
+        if not candidate_id:
+            continue
+        names = {
+            str(item.get("name") or "").strip().lower(),
+            str(item.get("system") or "").strip().lower(),
+            str(item.get("resource_name") or "").strip().lower(),
+        }
+        if target in names:
+            return candidate_id
+    return ""
 
 
 def _escape_graphql_string(value: str) -> str:
@@ -250,6 +312,16 @@ class IRILauncher:
         if not selected_system:
             raise ValueError("IRI system is required. Pass system or export IRI_SYSTEM.")
 
+        resolved_resource_id = ""
+        if selected_facility == "alcf":
+            resolved_resource_id = _resolve_alcf_resource_id(
+                api_base_url=selected_api_base_url,
+                system=selected_system,
+                auth_header_name=auth_header_name,
+                auth_token_prefix=auth_token_prefix,
+                request_timeout_sec=request_timeout_sec,
+            )
+
         argparse_args = [
             ("project-name", project_name),
             ("task-name", task_name),
@@ -328,10 +400,11 @@ class IRILauncher:
             "env:IRI_FACILITY": selected_facility,
             "env:IRI_API_BASE_URL": selected_api_base_url,
             "env:IRI_SYSTEM": selected_system,
-            "env:IRI_RESOURCE_ID": selected_system,
             "env:IRI_SUBMIT_PATH": selected_submit_path,
             "env:IRI_STATUS_PATH_TEMPLATE": selected_status_path_template,
         }
+        if resolved_resource_id:
+            params_to_set["env:IRI_RESOURCE_ID"] = resolved_resource_id
         if result_path_template:
             params_to_set["Args/result-path-template"] = result_path_template
         if serialized_job_payload:
@@ -343,6 +416,8 @@ class IRILauncher:
             clearml_user_properties.setdefault("iri_job_payload_json", serialized_job_payload)
         clearml_user_properties.setdefault("iri_facility", selected_facility)
         clearml_user_properties.setdefault("iri_system", selected_system)
+        if resolved_resource_id:
+            clearml_user_properties.setdefault("iri_resource_id", resolved_resource_id)
         clearml_user_properties = {
             key: value for key, value in clearml_user_properties.items() if value is not None
         }
