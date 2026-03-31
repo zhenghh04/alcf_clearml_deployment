@@ -15,5 +15,5 @@ export PBS_JOBSIZE=$(cat "$PBS_NODEFILE" | uniq | wc -l)
 export PPN=4
 
 
-mpiexec -n $((PBS_JOBSIZE*PPN)) --ppn $PPN python -c "from mpi4py import MPI; import socket; comm = MPI.COMM_WORLD; rank = comm.Get_rank(); print(f'I am Rank {rank} of {comm.size()} on {socket.gethostname()}')"
+mpiexec -n $((PBS_JOBSIZE*PPN)) --ppn $PPN python -c "from mpi4py import MPI; import socket; comm = MPI.COMM_WORLD; rank = comm.Get_rank(); print(f'I am Rank {rank} of {comm.size} on {socket.gethostname()}')"
 echo "Done sleeping, exiting now."
