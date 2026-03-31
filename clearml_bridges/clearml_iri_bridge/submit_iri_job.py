@@ -285,15 +285,72 @@ def parse_status(payload: Dict[str, Any], status_field: str) -> str:
     return clean_str(read_nested(payload, status_field)).upper()
 
 
-def scrub_auth_parameters(task: Task) -> None:
+def scrub_task_parameters(task: Task) -> None:
     for param_name in (
-        "Args/auth-token",
+        "Args/artifact_path",
+        "Args/auth_header_name",
         "Args/auth_token",
-        "General/auth-token",
+        "Args/auth_token_prefix",
+        "Args/headers_json",
+        "Args/id_field",
+        "Args/job_payload_file",
+        "Args/job_payload_json",
+        "Args/poll_interval",
+        "Args/project_name",
+        "Args/request_timeout_sec",
+        "Args/result_field",
+        "Args/result_path_template",
+        "Args/script_file",
+        "Args/status_field",
+        "Args/status_path_template",
+        "Args/success_states_json",
+        "Args/task_name",
+        "Args/task_type",
+        "Args/terminal_states_json",
+        "Args/timeout_sec",
+        "General/artifact_path",
+        "General/auth_header_name",
         "General/auth_token",
-        "auth-token",
+        "General/auth_token_prefix",
+        "General/headers_json",
+        "General/id_field",
+        "General/job_payload_file",
+        "General/job_payload_json",
+        "General/poll_interval",
+        "General/project_name",
+        "General/request_timeout_sec",
+        "General/result_field",
+        "General/result_path_template",
+        "General/script_file",
+        "General/status_field",
+        "General/status_path_template",
+        "General/success_states_json",
+        "General/task_name",
+        "General/task_type",
+        "General/terminal_states_json",
+        "General/timeout_sec",
+        "artifact_path",
+        "auth_header_name",
         "auth_token",
+        "auth_token_prefix",
         "bridge/auth_token",
+        "headers_json",
+        "id_field",
+        "job_payload_file",
+        "job_payload_json",
+        "poll_interval",
+        "project_name",
+        "request_timeout_sec",
+        "result_field",
+        "result_path_template",
+        "script_file",
+        "status_field",
+        "status_path_template",
+        "success_states_json",
+        "task_name",
+        "task_type",
+        "terminal_states_json",
+        "timeout_sec",
     ):
         try:
             task.delete_parameter(param_name, force=True)
@@ -513,7 +570,7 @@ def main() -> None:
         task_name=task_name,
         task_type=clean_str(args.task_type) or "data_processing",
     )
-    scrub_auth_parameters(task)
+    scrub_task_parameters(task)
     logger = task.get_logger()
 
     payload_source = "cli"
