@@ -285,6 +285,22 @@ def parse_status(payload: Dict[str, Any], status_field: str) -> str:
     return clean_str(read_nested(payload, status_field)).upper()
 
 
+def scrub_auth_parameters(task: Task) -> None:
+    for param_name in (
+        "Args/auth-token",
+        "Args/auth_token",
+        "General/auth-token",
+        "General/auth_token",
+        "auth-token",
+        "auth_token",
+        "bridge/auth_token",
+    ):
+        try:
+            task.delete_parameter(param_name, force=True)
+        except Exception:
+            pass
+
+
 def make_url(base_url: str, path: str) -> str:
     return urljoin(base_url.rstrip("/") + "/", path.lstrip("/"))
 
@@ -497,6 +513,7 @@ def main() -> None:
         task_name=task_name,
         task_type=clean_str(args.task_type) or "data_processing",
     )
+    scrub_auth_parameters(task)
     logger = task.get_logger()
 
     payload_source = "cli"
