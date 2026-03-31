@@ -55,7 +55,12 @@ def _resolve_alcf_resource_id(
     except Exception:
         return ""
 
-    items = payload.get("resources")
+    if isinstance(payload, list):
+        items = payload
+    elif isinstance(payload, dict):
+        items = payload.get("resources")
+    else:
+        items = None
     if not isinstance(items, list):
         return ""
 
