@@ -146,6 +146,21 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=int(os.getenv("IRI_REQUEST_TIMEOUT_SEC", "60")),
     )
+    parser.add_argument(
+        "--log-stdout",
+        action="store_true",
+        default=os.getenv("IRI_LOG_STDOUT", "1") != "0",
+    )
+    parser.add_argument(
+        "--log-stderr",
+        action="store_true",
+        default=os.getenv("IRI_LOG_STDERR", "1") != "0",
+    )
+    parser.add_argument(
+        "--max-log-chars",
+        type=int,
+        default=int(os.getenv("IRI_MAX_LOG_CHARS", "20000")),
+    )
     parser.add_argument("--artifact-path", default=os.getenv("IRI_ARTIFACT_PATH", "iri_result.json"))
     parser.add_argument(
         "--auth-token",
@@ -295,6 +310,9 @@ def scrub_task_parameters(task: Task) -> None:
         "Args/id_field",
         "Args/job_payload_file",
         "Args/job_payload_json",
+        "Args/log_stderr",
+        "Args/log_stdout",
+        "Args/max_log_chars",
         "Args/poll_interval",
         "Args/project_name",
         "Args/request_timeout_sec",
@@ -316,6 +334,9 @@ def scrub_task_parameters(task: Task) -> None:
         "General/id_field",
         "General/job_payload_file",
         "General/job_payload_json",
+        "General/log_stderr",
+        "General/log_stdout",
+        "General/max_log_chars",
         "General/poll_interval",
         "General/project_name",
         "General/request_timeout_sec",
@@ -338,6 +359,9 @@ def scrub_task_parameters(task: Task) -> None:
         "id_field",
         "job_payload_file",
         "job_payload_json",
+        "log_stderr",
+        "log_stdout",
+        "max_log_chars",
         "poll_interval",
         "project_name",
         "request_timeout_sec",
@@ -356,6 +380,38 @@ def scrub_task_parameters(task: Task) -> None:
             task.delete_parameter(param_name, force=True)
         except Exception:
             pass
+
+
+def report_job_output(logger: Any, label: str, file_path: str, max_chars: int) -> None:
+    normalized_path = clean_str(file_path)
+    if not normalized_path:
+        logger.report_text(f"[iri] {label}_path missing in payload")
+        return
+    path = Path(normalized_path)
+    if not path.exists():
+        logger.report_text(f"[iri] {label}_path not found: {normalized_path}")
+        return
+    content = path.read_text(encoding="utf-8", errors="replace")
+    truncated = False
+    if max_chars > 0 and len(content) > max_chars:
+        content = content[-max_chars:]
+        truncated = True
+    header = f"[iri] {label} from {normalized_path}"
+    if truncated:
+        header += f" (last {max_chars} chars)"
+    logger.report_text(f"{header}\n{content}")
+
+
+def upload_job_output_artifact(task: Task, logger: Any, label: str, file_path: str) -> None:
+    normalized_path = clean_str(file_path)
+    if not normalized_path:
+        return
+    path = Path(normalized_path)
+    if not path.exists():
+        logger.report_text(f"[iri] skipping {label} artifact upload; file not found: {normalized_path}")
+        return
+    task.upload_artifact(name=f"iri_{label}", artifact_object=str(path))
+    logger.report_text(f"[iri] uploaded artifact iri_{label} from {normalized_path}")
 
 
 def make_url(base_url: str, path: str) -> str:
@@ -684,7 +740,33 @@ def main() -> None:
     artifact_path = Path(args.artifact_path)
     artifact_path.write_text(json.dumps(output, indent=2, sort_keys=True))
     task.upload_artifact(name="iri_result", artifact_object=str(artifact_path))
+    upload_job_output_artifact(
+        task=task,
+        logger=logger,
+        label="stdout",
+        file_path=clean_str(payload.get("stdout_path")),
+    )
+    upload_job_output_artifact(
+        task=task,
+        logger=logger,
+        label="stderr",
+        file_path=clean_str(payload.get("stderr_path")),
+    )
     logger.report_scalar("iri_bridge", "total_time_sec", value=elapsed, iteration=0)
+    if args.log_stdout:
+        report_job_output(
+            logger=logger,
+            label="stdout",
+            file_path=clean_str(payload.get("stdout_path")),
+            max_chars=args.max_log_chars,
+        )
+    if args.log_stderr:
+        report_job_output(
+            logger=logger,
+            label="stderr",
+            file_path=clean_str(payload.get("stderr_path")),
+            max_chars=args.max_log_chars,
+        )
 
     if status not in success_states:
         raise RuntimeError(f"IRI job failed with status '{status}'. Output: {output}")
