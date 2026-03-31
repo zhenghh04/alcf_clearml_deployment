@@ -266,9 +266,9 @@ class IRILauncher:
         self,
         project_name: str,
         task_name: str,
-        repo: str,
-        branch: str,
-        working_directory: str,
+        repo: Optional[str] = None,
+        branch: Optional[str] = None,
+        working_directory: str = ".",
         task_type: Task.TaskTypes = Task.TaskTypes.data_processing,
         facility: Optional[str] = None,
         api_base_url: Optional[str] = None,
@@ -372,13 +372,15 @@ class IRILauncher:
             "project_name": project_name,
             "task_name": task_name,
             "task_type": task_type,
-            "repo": repo,
-            "branch": branch,
             "working_directory": launcher_working_directory or working_directory,
             "binary": launcher_binary,
             "argparse_args": argparse_args,
             "packages": list(self.DEFAULT_PACKAGES),
         }
+        if repo:
+            create_kwargs["repo"] = repo
+        if branch:
+            create_kwargs["branch"] = branch
         if launcher_script:
             create_kwargs["script"] = launcher_script
             create_kwargs["force_single_script_file"] = True
@@ -463,8 +465,8 @@ def _build_parser() -> Any:
     )
     parser.add_argument("--project-name", required=True)
     parser.add_argument("--task-name", required=True)
-    parser.add_argument("--repo", required=True)
-    parser.add_argument("--branch", default="main")
+    parser.add_argument("--repo", default="")
+    parser.add_argument("--branch", default="")
     parser.add_argument("--working-directory", default=".")
     parser.add_argument("--task-type", default=Task.TaskTypes.data_processing.value)
     parser.add_argument("--facility", required=True, choices=sorted(FACILITY_BASE_URLS))
@@ -512,8 +514,8 @@ def main() -> int:
     task = launcher.create(
         project_name=args.project_name,
         task_name=args.task_name,
-        repo=args.repo,
-        branch=args.branch,
+        repo=args.repo or None,
+        branch=args.branch or None,
         working_directory=args.working_directory,
         task_type=_parse_task_type(args.task_type),
         facility=args.facility,

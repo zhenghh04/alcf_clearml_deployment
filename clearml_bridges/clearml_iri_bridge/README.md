@@ -88,8 +88,6 @@ Then launch:
 clearml-iri-launch \
   --project-name "AmSC/pipeline-iri-bridge" \
   --task-name "submit-iri-job" \
-  --repo https://github.com/argonne-lcf/alcf_clearml_deployment.git \
-  --branch main \
   --working-directory . \
   --facility alcf \
   --system polaris \
@@ -99,6 +97,7 @@ clearml-iri-launch \
 ```
 
 `clearml-iri-launch` reads `--job-payload-file` locally at launch time and embeds the JSON into the created ClearML task. It does not rely on that file path existing on the remote worker.
+Pass `--repo` and `--branch` only when the ClearML task should be tied to a specific Git repository checkout.
 
 ## Run The Submit Wrapper Directly
 
