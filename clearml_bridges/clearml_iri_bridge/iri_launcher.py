@@ -60,11 +60,11 @@ def build_job_payload(
     if script_path:
         script = Path(script_path).read_text(encoding="utf-8")
     if script_remote_path:
-        resolved_arguments = ["-c", f"/bin/bash {shlex.quote(script_remote_path)}"]
+        resolved_arguments = ["-lc", f"/bin/bash -l {shlex.quote(script_remote_path)}"]
     elif script:
-        resolved_arguments = ["-c", _escape_graphql_string(_normalize_script_text(script))]
+        resolved_arguments = ["-lc", _escape_graphql_string(_normalize_script_text(script))]
     elif command:
-        resolved_arguments = ["-c", _escape_graphql_string(_normalize_script_text(command))]
+        resolved_arguments = ["-lc", _escape_graphql_string(_normalize_script_text(command))]
 
     if not resolved_arguments:
         raise ValueError(

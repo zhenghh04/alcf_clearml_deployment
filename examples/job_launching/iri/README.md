@@ -154,6 +154,14 @@ For ALCF specifically, a short inline `command` is usually fine, but sending a l
 
 The example [iri_submit_script.py](/Users/huihuo.zheng/Documents/Research/AmSC/clearml/alcf_clearml_deployment/examples/job_launching/iri/python/iri_submit_script.py) now uses that mode.
 
+For script-based launches, the bridge now uses a login shell path so the runtime is closer to normal PBS `qsub` behavior:
+
+- remote scripts are launched as `/bin/bash -l <script>`
+- inline commands and inline scripts are launched through `bash -lc`
+- the bundled example [job.sh](/Users/huihuo.zheng/Documents/Research/AmSC/clearml/alcf_clearml_deployment/examples/job_launching/iri/python/job.sh) also uses `#!/bin/bash -l`
+
+This matters because tools such as `module`, `conda`, `python`, and `mpiexec` may not be available in a plain non-login shell.
+
 Expected output includes:
 
 ```text
@@ -170,3 +178,10 @@ ClearML results page: https://.../projects/<project_id>/experiments/<task_id>/ou
   - `[iri] payload=...`
   - `[iri] system=... resolved_system=...`
   - response body details from the facility API
+
+## Known Issues
+
+- On ALCF, `stdout_path` and `stderr_path` under `/eagle/...` may not appear when the job is submitted through the facility API service nodes such as `facility-api-vmw-01...`.
+- Current ALCF guidance is to prefer home-directory output paths such as `/home/<user>/iri.out` and `/home/<user>/iri.err` if you want the files to be generated reliably.
+- The bridge can only upload stdout and stderr artifacts when those files are visible from the ClearML worker. If the files are not generated or are not mounted on the worker host, artifact upload will be skipped.
+- ALCF `node_count` is still not supported in the current live API deployment.

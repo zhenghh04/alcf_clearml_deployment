@@ -1,6 +1,7 @@
-#!/bin/bash
-cd $PBS_O_WORKDIR
-echo $PWD
+#!/bin/bash -l
+
+cd "$PBS_O_WORKDIR"
+echo "$PWD"
 echo "Started job $PBS_JOBID on $(hostname) at $(date)"
 echo "Running a dummy script on the Globus Compute endpoint..."
 echo "Sleeping for 10 seconds to simulate a long-running task..."
@@ -10,7 +11,7 @@ module load conda
 conda activate
 
 python -c "import time; time.sleep(10); import socket; print('Hostname:', socket.gethostname())"
-export PBS_JOBSIZE=$(cat $PBS_NODEFILE | uniq | wc -l)
+export PBS_JOBSIZE=$(cat "$PBS_NODEFILE" | uniq | wc -l)
 export PPN=4
 
 
