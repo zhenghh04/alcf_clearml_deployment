@@ -177,6 +177,16 @@ def build_headers(args: argparse.Namespace) -> Dict[str, str]:
     return headers
 
 
+def validate_auth(headers: Dict[str, str], args: argparse.Namespace) -> None:
+    auth_header_name = clean_str(args.auth_header_name) or "Authorization"
+    auth_value = clean_str(headers.get(auth_header_name))
+    if not auth_value:
+        raise ValueError(
+            "Missing IRI API token. Set IRI_API_TOKEN or pass --auth-token so the "
+            f"request can include the '{auth_header_name}' header."
+        )
+
+
 def parse_job_id(submit_response: Dict[str, Any], id_field: str) -> str:
     value = read_nested(submit_response, id_field)
     normalized = clean_str(value)
@@ -278,6 +288,7 @@ def main() -> None:
 
     payload = read_payload(args)
     headers = build_headers(args)
+    validate_auth(headers, args)
     terminal_states = parse_json_list(
         args.terminal_states_json,
         "--terminal-states-json",
@@ -302,6 +313,7 @@ def main() -> None:
     session = requests.Session()
 
     logger.report_text(f"[iri] submit_url={submit_url}")
+    logger.report_text(f"[iri] auth_header_present={args.auth_header_name in headers}")
     submit_response = request_json(
         session=session,
         method=args.method.upper(),
