@@ -325,6 +325,21 @@ def parse_status(payload: Dict[str, Any], status_field: str) -> str:
     return clean_str(read_nested(payload, status_field)).upper()
 
 
+def parse_exit_code(payload: Dict[str, Any]) -> Optional[int]:
+    candidates = (
+        read_nested(payload, "status.exit_code"),
+        payload.get("exit_code") if isinstance(payload, dict) else None,
+    )
+    for value in candidates:
+        if value is None or value == "":
+            continue
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
 def scrub_task_parameters(task: Task) -> None:
     for param_name in (
         "Args/artifact_path",
@@ -753,12 +768,14 @@ def main() -> None:
         )
 
     result_value = read_nested(final_payload, args.result_field) if args.result_field else None
+    exit_code = parse_exit_code(status_payload)
     output = {
         "system": system,
         "resolved_system": resolved_system,
         "resource_id": resolved_system,
         "job_id": job_id,
         "status": status,
+        "exit_code": exit_code,
         "elapsed_sec": elapsed,
         "submit_response": submit_response,
         "status_response": status_payload,
@@ -796,8 +813,18 @@ def main() -> None:
             max_chars=args.max_log_chars,
         )
 
-    if status not in success_states:
-        raise RuntimeError(f"IRI job failed with status '{status}'. Output: {output}")
+    if exit_code is not None:
+        logger.report_text(f"[iri] exit_code={exit_code}")
+
+    if status not in success_states or (exit_code is not None and exit_code != 0):
+        reason = f"status='{status}'"
+        if exit_code is not None:
+            reason += f", exit_code={exit_code}"
+        try:
+            task.mark_failed(status_reason=f"IRI job finished with {reason}")
+        except Exception:
+            pass
+        raise RuntimeError(f"IRI job failed with {reason}. Output: {output}")
 
     logger.report_text(f"[iri] completed status={status} elapsed={elapsed:.1f}s")
 
