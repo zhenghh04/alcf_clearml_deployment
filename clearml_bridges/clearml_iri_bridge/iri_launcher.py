@@ -175,6 +175,10 @@ class IRILauncher:
         task.set_parameters_as_dict(params_to_set)
 
         clearml_user_properties = dict(user_properties or {})
+        if serialized_job_payload:
+            clearml_user_properties.setdefault("iri_job_payload_json", serialized_job_payload)
+        clearml_user_properties.setdefault("iri_facility", selected_facility)
+        clearml_user_properties.setdefault("iri_system", selected_system)
         clearml_user_properties = {
             key: value for key, value in clearml_user_properties.items() if value is not None
         }
@@ -198,6 +202,18 @@ def _parse_task_type(value: str) -> Task.TaskTypes:
         f"Unsupported task type '{value}'. Use one of: "
         + ", ".join(sorted(task_type.value for task_type in Task.TaskTypes))
     )
+
+
+def _task_output_log_url(task: Task) -> str:
+    try:
+        app_server = (task.get_app_server() or "").rstrip("/")
+    except Exception:
+        app_server = ""
+    task_id = getattr(task, "id", "") or ""
+    project_id = getattr(task, "project", "") or ""
+    if not app_server or not task_id or not project_id:
+        return ""
+    return f"{app_server}/projects/{project_id}/experiments/{task_id}/output/log"
 
 
 def _build_parser() -> Any:
@@ -284,6 +300,9 @@ def main() -> int:
         print(f"Enqueued task: {task.id} on queue {args.queue}")
     else:
         print(f"Created task: {task.id}")
+    task_url = _task_output_log_url(task)
+    if task_url:
+        print(f"ClearML results page: {task_url}")
     return 0
 
 
