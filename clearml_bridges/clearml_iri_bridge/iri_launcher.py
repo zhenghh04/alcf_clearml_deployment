@@ -23,6 +23,7 @@ def build_job_payload(
     executable: str = "/bin/bash",
     arguments: Optional[list[str]] = None,
     command: str = "",
+    script: str = "",
     script_path: str = "",
     account: str = "",
     queue_name: str = "",
@@ -34,17 +35,21 @@ def build_job_payload(
     if scheduler_name not in {"pbs", "slurm"}:
         raise ValueError("scheduler must be one of: pbs, slurm")
 
-    if arguments and (command or script_path):
-        raise ValueError("Pass either arguments or command/script_path, not both.")
+    if arguments and (command or script or script_path):
+        raise ValueError("Pass either arguments or command/script/script_path, not both.")
 
     resolved_arguments = list(arguments or [])
+    if script and script_path:
+        raise ValueError("Pass either script or script_path, not both.")
     if script_path:
         resolved_arguments = ["-lc", Path(script_path).read_text(encoding="utf-8")]
+    elif script:
+        resolved_arguments = ["-lc", script]
     elif command:
         resolved_arguments = ["-lc", command]
 
     if not resolved_arguments:
-        raise ValueError("Job payload requires either arguments, command, or script_path.")
+        raise ValueError("Job payload requires either arguments, command, script, or script_path.")
 
     attrs: Dict[str, Any] = dict(extra_attributes or {})
     if account:
@@ -82,6 +87,7 @@ def build_alcf_job_payload(
     executable: str = "/bin/bash",
     arguments: Optional[list[str]] = None,
     command: str = "",
+    script: str = "",
     script_path: str = "",
     custom_attributes: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
@@ -97,6 +103,7 @@ def build_alcf_job_payload(
         executable=executable,
         arguments=arguments,
         command=command,
+        script=script,
         script_path=script_path,
         custom_attributes=custom_attributes,
     )
@@ -154,6 +161,8 @@ class IRILauncher:
         method: str = "POST",
         job_payload: Optional[Dict[str, Any]] = None,
         job_payload_file: Optional[str] = None,
+        script: str = "",
+        script_file: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         id_field: str = "id",
         status_field: str = "status",
@@ -208,8 +217,17 @@ class IRILauncher:
             argparse_args.append(("result-path-template", result_path_template))
         if job_payload and job_payload_file:
             raise ValueError("Pass only one of job_payload or job_payload_file.")
+        if script and script_file:
+            raise ValueError("Pass only one of script or script_file.")
         if job_payload_file:
             job_payload = json.loads(Path(job_payload_file).read_text())
+        if script_file:
+            script = Path(script_file).read_text(encoding="utf-8")
+        if script:
+            job_payload = dict(job_payload or {})
+            if job_payload.get("arguments"):
+                raise ValueError("script/script_file cannot be combined with job_payload arguments.")
+            job_payload["script"] = script
         serialized_job_payload = ""
         if job_payload:
             serialized_job_payload = json.dumps(job_payload)
@@ -325,6 +343,8 @@ def _build_parser() -> Any:
     parser.add_argument("--method", default="POST")
     parser.add_argument("--job-payload-json", default="")
     parser.add_argument("--job-payload-file", default="")
+    parser.add_argument("--script", default="")
+    parser.add_argument("--script-file", default="")
     parser.add_argument("--headers-json", default="")
     parser.add_argument("--id-field", default="id")
     parser.add_argument("--status-field", default="status.state")
@@ -349,6 +369,8 @@ def main() -> int:
     launcher = IRILauncher()
     if args.job_payload_json and args.job_payload_file:
         raise ValueError("Pass only one of --job-payload-json or --job-payload-file.")
+    if args.script and args.script_file:
+        raise ValueError("Pass only one of --script or --script-file.")
     job_payload = json.loads(args.job_payload_json) if args.job_payload_json else None
     headers = json.loads(args.headers_json) if args.headers_json else None
     terminal_states = json.loads(args.terminal_states_json) if args.terminal_states_json else None
@@ -370,6 +392,8 @@ def main() -> int:
         method=args.method,
         job_payload=job_payload,
         job_payload_file=args.job_payload_file or None,
+        script=args.script,
+        script_file=args.script_file or None,
         headers=headers,
         id_field=args.id_field,
         status_field=args.status_field,

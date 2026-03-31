@@ -44,6 +44,30 @@ def parse_json_list(raw: str, arg_name: str, default: List[str]) -> List[str]:
     return [str(item) for item in parsed]
 
 
+def normalize_job_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
+    normalized = dict(payload)
+    script = clean_str(normalized.pop("script", ""))
+    script_path = clean_str(normalized.pop("script_path", ""))
+    command = clean_str(normalized.pop("command", ""))
+
+    arguments = normalized.get("arguments")
+    if arguments and (script or script_path or command):
+        raise ValueError("Payload cannot include both arguments and script/script_path/command.")
+    if script and script_path:
+        raise ValueError("Payload cannot include both script and script_path.")
+
+    if script_path:
+        script = Path(script_path).read_text(encoding="utf-8")
+    elif command:
+        script = command
+
+    if script:
+        normalized.setdefault("executable", "/bin/bash")
+        normalized["arguments"] = ["-lc", script]
+
+    return normalized
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -86,6 +110,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--job-payload-json", default=os.getenv("IRI_JOB_PAYLOAD_JSON", ""))
     parser.add_argument("--job-payload-file", default=os.getenv("IRI_JOB_PAYLOAD_FILE", ""))
+    parser.add_argument("--script", default=os.getenv("IRI_JOB_SCRIPT", ""))
+    parser.add_argument("--script-file", default=os.getenv("IRI_JOB_SCRIPT_FILE", ""))
     parser.add_argument("--headers-json", default=os.getenv("IRI_HEADERS_JSON", ""))
     parser.add_argument(
         "--id-field",
@@ -197,10 +223,11 @@ def _get_task_parameter(task: Task, *names: str) -> str:
 
 
 def read_payload(args: argparse.Namespace, task: Optional[Task] = None) -> Dict[str, Any]:
+    payload: Dict[str, Any] = {}
     if args.job_payload_file:
-        return json.loads(Path(args.job_payload_file).read_text())
-    if args.job_payload_json:
-        return parse_json_object(args.job_payload_json, "--job-payload-json")
+        payload = json.loads(Path(args.job_payload_file).read_text())
+    elif args.job_payload_json:
+        payload = parse_json_object(args.job_payload_json, "--job-payload-json")
     if task is not None:
         task_payload = _get_task_parameter(
             task,
@@ -209,8 +236,19 @@ def read_payload(args: argparse.Namespace, task: Optional[Task] = None) -> Dict[
             "job_payload_json",
         )
         if task_payload:
-            return parse_json_object(task_payload, "Args/job-payload-json")
-    return {}
+            payload = parse_json_object(task_payload, "Args/job-payload-json")
+
+    script = clean_str(args.script)
+    script_file = clean_str(args.script_file)
+    if script and script_file:
+        raise ValueError("Pass only one of --script or --script-file.")
+    if script_file:
+        script = Path(script_file).read_text(encoding="utf-8")
+    if script:
+        payload = dict(payload)
+        payload["script"] = script
+
+    return normalize_job_payload(payload)
 
 
 def build_headers(args: argparse.Namespace) -> Dict[str, str]:
