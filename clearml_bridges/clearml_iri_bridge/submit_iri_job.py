@@ -47,15 +47,15 @@ def parse_json_list(raw: str, arg_name: str, default: List[str]) -> List[str]:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--project-name", "--project_name",
+        "--project-name",
         default=os.getenv("CLEARML_PROJECT_NAME", "amsc/pipeline-iri-bridge"),
     )
     parser.add_argument(
-        "--task-name", "--task_name",
+        "--task-name",
         default=os.getenv("CLEARML_TASK_NAME", "submit-iri-job"),
     )
     parser.add_argument(
-        "--task-type", "--task_type",
+        "--task-type",
         default=os.getenv("CLEARML_TASK_TYPE", "data_processing"),
     )
     parser.add_argument(
@@ -69,69 +69,69 @@ def parse_args() -> argparse.Namespace:
         help="Target system name or resource identifier used in /api/v1/compute/* paths.",
     )
     parser.add_argument(
-        "--submit-path", "--submit_path",
+        "--submit-path",
         default=os.getenv("IRI_SUBMIT_PATH", "/api/v1/compute/job/{system}"),
     )
     parser.add_argument(
-        "--status-path-template", "--status_path_template",
+        "--status-path-template",
         default=os.getenv("IRI_STATUS_PATH_TEMPLATE", "/api/v1/compute/status/{system}/{job_id}"),
     )
     parser.add_argument(
-        "--result-path-template", "--result_path_template",
+        "--result-path-template",
         default=os.getenv("IRI_RESULT_PATH_TEMPLATE", ""),
     )
     parser.add_argument(
         "--method",
         default=os.getenv("IRI_SUBMIT_METHOD", "POST"),
     )
-    parser.add_argument("--job-payload-json", "--job_payload_json", default=os.getenv("IRI_JOB_PAYLOAD_JSON", ""))
-    parser.add_argument("--job-payload-file", "--job_payload_file", default=os.getenv("IRI_JOB_PAYLOAD_FILE", ""))
-    parser.add_argument("--headers-json", "--headers_json", default=os.getenv("IRI_HEADERS_JSON", ""))
+    parser.add_argument("--job-payload-json", default=os.getenv("IRI_JOB_PAYLOAD_JSON", ""))
+    parser.add_argument("--job-payload-file", default=os.getenv("IRI_JOB_PAYLOAD_FILE", ""))
+    parser.add_argument("--headers-json", default=os.getenv("IRI_HEADERS_JSON", ""))
     parser.add_argument(
-        "--id-field", "--id_field",
+        "--id-field",
         default=os.getenv("IRI_JOB_ID_FIELD", "id"),
         help="Dot path for job id, e.g. id or data.job_id",
     )
     parser.add_argument(
-        "--status-field", "--status_field",
+        "--status-field",
         default=os.getenv("IRI_STATUS_FIELD", "status.state"),
         help="Dot path for status, e.g. status.state or data.state",
     )
     parser.add_argument(
-        "--result-field", "--result_field",
+        "--result-field",
         default=os.getenv("IRI_RESULT_FIELD", ""),
         help="Optional dot path for a result value in the final response payload.",
     )
     parser.add_argument(
-        "--terminal-states-json", "--terminal_states_json",
+        "--terminal-states-json",
         default=os.getenv(
             "IRI_TERMINAL_STATES_JSON",
             '["COMPLETED","FAILED","CANCELED"]',
         ),
     )
     parser.add_argument(
-        "--success-states-json", "--success_states_json",
+        "--success-states-json",
         default=os.getenv("IRI_SUCCESS_STATES_JSON", '["COMPLETED"]'),
     )
-    parser.add_argument("--poll-interval", "--poll_interval", type=int, default=int(os.getenv("IRI_POLL_INTERVAL", "10")))
-    parser.add_argument("--timeout-sec", "--timeout_sec", type=int, default=int(os.getenv("IRI_TIMEOUT_SEC", "1800")))
+    parser.add_argument("--poll-interval", type=int, default=int(os.getenv("IRI_POLL_INTERVAL", "10")))
+    parser.add_argument("--timeout-sec", type=int, default=int(os.getenv("IRI_TIMEOUT_SEC", "1800")))
     parser.add_argument(
-        "--request-timeout-sec", "--request_timeout_sec",
+        "--request-timeout-sec",
         type=int,
         default=int(os.getenv("IRI_REQUEST_TIMEOUT_SEC", "60")),
     )
-    parser.add_argument("--artifact-path", "--artifact_path", default=os.getenv("IRI_ARTIFACT_PATH", "iri_result.json"))
+    parser.add_argument("--artifact-path", default=os.getenv("IRI_ARTIFACT_PATH", "iri_result.json"))
     parser.add_argument(
-        "--auth-token", "--auth_token",
+        "--auth-token",
         default=os.getenv("IRI_API_TOKEN", ""),
         help="Token value only; prefix is controlled by --auth-token-prefix",
     )
     parser.add_argument(
-        "--auth-header-name", "--auth_header_name",
+        "--auth-header-name",
         default=os.getenv("IRI_AUTH_HEADER_NAME", "Authorization"),
     )
     parser.add_argument(
-        "--auth-token-prefix", "--auth_token_prefix",
+        "--auth-token-prefix",
         default=os.getenv("IRI_AUTH_TOKEN_PREFIX", "Bearer "),
     )
     return parser.parse_args()
@@ -164,12 +164,33 @@ def _get_task_parameter(task: Task, *names: str) -> str:
     try:
         params = task.get_parameters_as_dict()
     except Exception:
-        return ""
-    for name in names:
-        value = params.get(name)
-        if value is None:
-            continue
+        params = {}
+    try:
+        flat_params = task.get_parameters()
+    except Exception:
+        flat_params = {}
+
+    def _lookup(mapping: Dict[str, Any], name: str) -> str:
+        if not isinstance(mapping, dict):
+            return ""
+        value = mapping.get(name)
         normalized = clean_str(value)
+        if normalized:
+            return normalized
+        if "/" in name:
+            head, tail = name.split("/", 1)
+            section = mapping.get(head)
+            if isinstance(section, dict):
+                normalized = clean_str(section.get(tail))
+                if normalized:
+                    return normalized
+        return ""
+
+    for name in names:
+        normalized = _lookup(params, name)
+        if normalized:
+            return normalized
+        normalized = _lookup(flat_params, name)
         if normalized:
             return normalized
     return ""

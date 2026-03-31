@@ -121,8 +121,10 @@ class IRILauncher:
             raise ValueError("Pass only one of job_payload or job_payload_file.")
         if job_payload_file:
             job_payload = json.loads(Path(job_payload_file).read_text())
+        serialized_job_payload = ""
         if job_payload:
-            argparse_args.append(("job-payload-json", json.dumps(job_payload)))
+            serialized_job_payload = json.dumps(job_payload)
+            argparse_args.append(("job-payload-json", serialized_job_payload))
         if headers:
             argparse_args.append(("headers-json", json.dumps(headers)))
         if terminal_states:
@@ -168,6 +170,8 @@ class IRILauncher:
         }
         if result_path_template:
             params_to_set["Args/result-path-template"] = result_path_template
+        if serialized_job_payload:
+            params_to_set["Args/job-payload-json"] = serialized_job_payload
         task.set_parameters_as_dict(params_to_set)
 
         clearml_user_properties = dict(user_properties or {})
