@@ -191,6 +191,10 @@ def parse_args() -> argparse.Namespace:
         default=os.getenv("IRI_STATUS_PATH_TEMPLATE", "/api/v1/compute/status/{system}/{job_id}"),
     )
     parser.add_argument(
+        "--cancel-path-template",
+        default=os.getenv("IRI_CANCEL_PATH_TEMPLATE", "/api/v1/compute/cancel/{system}/{job_id}"),
+    )
+    parser.add_argument(
         "--result-path-template",
         default=os.getenv("IRI_RESULT_PATH_TEMPLATE", ""),
     )
@@ -423,6 +427,7 @@ def scrub_task_parameters(task: Task) -> None:
         "Args/request_timeout_sec",
         "Args/result_field",
         "Args/result_path_template",
+        "Args/cancel_path_template",
         "Args/script_file",
         "Args/status_field",
         "Args/status_path_template",
@@ -448,6 +453,7 @@ def scrub_task_parameters(task: Task) -> None:
         "General/request_timeout_sec",
         "General/result_field",
         "General/result_path_template",
+        "General/cancel_path_template",
         "General/script_file",
         "General/status_field",
         "General/status_path_template",
@@ -474,6 +480,7 @@ def scrub_task_parameters(task: Task) -> None:
         "request_timeout_sec",
         "result_field",
         "result_path_template",
+        "cancel_path_template",
         "script_file",
         "status_field",
         "status_path_template",
@@ -675,14 +682,16 @@ def resolve_system_identifier(
 def poll_until_terminal(
     session: requests.Session,
     status_url: str,
+    cancel_url: str,
     headers: Dict[str, str],
     request_timeout_sec: int,
     status_field: str,
     terminal_states: List[str],
     timeout_sec: int,
     poll_interval: int,
+    task: Task,
     logger: Any,
-) -> Tuple[str, Dict[str, Any], float]:
+) -> Tuple[str, Dict[str, Any], float, bool]:
     start = time.time()
     last_payload: Dict[str, Any] = {}
     terminal_set = {s.upper() for s in terminal_states}
@@ -693,6 +702,35 @@ def poll_until_terminal(
             raise TimeoutError(
                 f"Timeout waiting for terminal state after {timeout_sec}s. Last payload: {last_payload}"
             )
+
+        try:
+            remote_task = Task.get_task(task_id=task.id)
+            task_status = clean_str(remote_task.get_status()).lower()
+        except Exception:
+            task_status = ""
+        if task_status in {"stopped", "stopping"}:
+            logger.report_text(
+                f"[iri] ClearML task status={task_status}; forwarding cancel to {cancel_url}"
+            )
+            try:
+                cancel_response = request_json(
+                    session=session,
+                    method="DELETE",
+                    url=cancel_url,
+                    headers=headers,
+                    request_timeout_sec=request_timeout_sec,
+                )
+            except Exception as exc:
+                logger.report_text(f"[iri] cancel request failed: {exc}")
+                cancel_response = {"error": str(exc)}
+            else:
+                logger.report_text(
+                    f"[iri] cancel response={json.dumps(cancel_response, sort_keys=True)}"
+                )
+            if isinstance(last_payload, dict):
+                last_payload = dict(last_payload)
+                last_payload["clearml_cancel_response"] = cancel_response
+            return "CANCELED", last_payload, elapsed, True
 
         try:
             last_payload = request_json(
@@ -720,7 +758,7 @@ def poll_until_terminal(
         logger.report_text(f"[iri] status={status or '<missing>'} elapsed={elapsed:.1f}s")
         logger.report_scalar("iri_bridge", "wait_time_sec", value=elapsed, iteration=int(elapsed))
         if status and status in terminal_set:
-            return status, last_payload, elapsed
+            return status, last_payload, elapsed, False
         time.sleep(max(1, poll_interval))
 
 
@@ -801,15 +839,26 @@ def main() -> None:
             job_id=job_id,
         ),
     )
-    status, status_payload, elapsed = poll_until_terminal(
+    cancel_url = make_url(
+        api_base_url,
+        format_path_template(
+            args.cancel_path_template,
+            system=resolved_system,
+            resource_id=resolved_system,
+            job_id=job_id,
+        ),
+    )
+    status, status_payload, elapsed, clearml_cancel_requested = poll_until_terminal(
         session=session,
         status_url=status_url,
+        cancel_url=cancel_url,
         headers=headers,
         request_timeout_sec=args.request_timeout_sec,
         status_field=args.status_field,
         terminal_states=terminal_states,
         timeout_sec=args.timeout_sec,
         poll_interval=args.poll_interval,
+        task=task,
         logger=logger,
     )
 
@@ -846,6 +895,7 @@ def main() -> None:
         "status_response": status_payload,
         "final_response": final_payload,
         "result_value": result_value,
+        "clearml_cancel_requested": clearml_cancel_requested,
     }
     artifact_path = resolve_artifact_path(args.artifact_path)
     artifact_path.write_text(json.dumps(output, indent=2, sort_keys=True))
@@ -880,6 +930,10 @@ def main() -> None:
 
     if exit_code is not None:
         logger.report_text(f"[iri] exit_code={exit_code}")
+
+    if clearml_cancel_requested:
+        logger.report_text("[iri] remote job cancel was triggered by a ClearML stop request")
+        return
 
     if status not in success_states or (exit_code is not None and exit_code != 0):
         reason = f"status='{status}'"

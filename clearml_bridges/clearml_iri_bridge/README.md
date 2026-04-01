@@ -168,6 +168,7 @@ Common overrides:
 
 - `IRI_SUBMIT_PATH`
 - `IRI_STATUS_PATH_TEMPLATE`
+- `IRI_CANCEL_PATH_TEMPLATE`
 - `IRI_RESULT_PATH_TEMPLATE`
 - `IRI_JOB_ID_FIELD`
 - `IRI_STATUS_FIELD`
@@ -179,3 +180,4 @@ Facility note:
 - Supported built-ins are `alcf`, `nersc`, and `olcf`.
 - The default submit/status templates in this package currently match ALCF.
 - For OLCF, NERSC, or another deployment whose schema differs from ALCF, set the facility-specific `IRI_SUBMIT_PATH`, `IRI_STATUS_PATH_TEMPLATE`, and status/id field mappings.
+- When a ClearML operator stops the bridge task while it is polling, the bridge now sends `DELETE /compute/cancel/{resource_id}/{job_id}` by default before exiting. Override `IRI_CANCEL_PATH_TEMPLATE` if your deployment uses a different cancel route.

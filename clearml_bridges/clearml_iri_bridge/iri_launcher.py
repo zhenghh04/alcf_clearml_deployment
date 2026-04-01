@@ -289,6 +289,7 @@ class IRILauncher:
         system: Optional[str] = None,
         submit_path: Optional[str] = None,
         status_path_template: Optional[str] = None,
+        cancel_path_template: Optional[str] = None,
         result_path_template: str = "",
         method: str = "POST",
         job_payload: Optional[Dict[str, Any]] = None,
@@ -323,6 +324,9 @@ class IRILauncher:
         selected_status_path_template = status_path_template or os.getenv(
             "IRI_STATUS_PATH_TEMPLATE", "/api/v1/compute/status/{system}/{job_id}"
         )
+        selected_cancel_path_template = cancel_path_template or os.getenv(
+            "IRI_CANCEL_PATH_TEMPLATE", "/api/v1/compute/cancel/{system}/{job_id}"
+        )
         if not selected_system:
             raise ValueError("IRI system is required. Pass system or export IRI_SYSTEM.")
 
@@ -344,6 +348,7 @@ class IRILauncher:
             ("system", selected_system),
             ("submit-path", selected_submit_path),
             ("status-path-template", selected_status_path_template),
+            ("cancel-path-template", selected_cancel_path_template),
             ("method", method),
             ("id-field", id_field),
             ("status-field", status_field),
@@ -413,11 +418,13 @@ class IRILauncher:
             "Args/system": selected_system,
             "Args/submit-path": selected_submit_path,
             "Args/status-path-template": selected_status_path_template,
+            "Args/cancel-path-template": selected_cancel_path_template,
             "env:IRI_FACILITY": selected_facility,
             "env:IRI_API_BASE_URL": selected_api_base_url,
             "env:IRI_SYSTEM": selected_system,
             "env:IRI_SUBMIT_PATH": selected_submit_path,
             "env:IRI_STATUS_PATH_TEMPLATE": selected_status_path_template,
+            "env:IRI_CANCEL_PATH_TEMPLATE": selected_cancel_path_template,
         }
         if resolved_resource_id:
             params_to_set["env:IRI_RESOURCE_ID"] = resolved_resource_id
@@ -487,6 +494,7 @@ def _build_parser() -> Any:
     parser.add_argument("--system", required=True)
     parser.add_argument("--submit-path", default="/api/v1/compute/job/{system}")
     parser.add_argument("--status-path-template", default="/api/v1/compute/status/{system}/{job_id}")
+    parser.add_argument("--cancel-path-template", default="/api/v1/compute/cancel/{system}/{job_id}")
     parser.add_argument("--result-path-template", default="")
     parser.add_argument("--method", default="POST")
     parser.add_argument("--job-payload-json", default="")
@@ -536,6 +544,7 @@ def main() -> int:
         system=args.system,
         submit_path=args.submit_path or None,
         status_path_template=args.status_path_template or None,
+        cancel_path_template=args.cancel_path_template or None,
         result_path_template=args.result_path_template or "",
         method=args.method,
         job_payload=job_payload,
