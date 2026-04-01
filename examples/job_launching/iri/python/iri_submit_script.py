@@ -23,6 +23,7 @@ def main() -> int:
         account="AmSC_Demos",
         queue_name="debug",
         duration=300,
+        note_count=1,
         custom_attributes={"filesystems": "home:eagle"},
         script_path="/home/hzheng/clearml/alcf_clearml_deployment/examples/job_launching/iri/python/job.sh",
     )

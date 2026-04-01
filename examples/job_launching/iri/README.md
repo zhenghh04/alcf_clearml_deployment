@@ -208,4 +208,4 @@ ClearML results page: https://.../projects/<project_id>/experiments/<task_id>/ou
 - On ALCF, `stdout_path` and `stderr_path` under `/eagle/...` may not appear when the job is submitted through the facility API service nodes such as `facility-api-vmw-01...`.
 - Current ALCF guidance is to prefer home-directory output paths such as `/home/<user>/iri.out` and `/home/<user>/iri.err` if you want the files to be generated reliably.
 - The bridge can only upload stdout and stderr artifacts when those files are visible from the ClearML worker. If the files are not generated or are not mounted on the worker host, artifact upload will be skipped.
-- ALCF `node_count` is still not supported in the current live API deployment.
+- The example payloads now use `resources.note_count` when requesting compute resources through the IRI API.

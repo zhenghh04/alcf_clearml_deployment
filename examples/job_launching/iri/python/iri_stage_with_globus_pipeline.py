@@ -1,4 +1,5 @@
 import sys
+import os
 from pathlib import Path
 
 from clearml import PipelineController, Task
@@ -12,13 +13,22 @@ from clearml_globus_bridge import GlobusDataMover
 from clearml_iri_bridge import IRILauncher, build_job_payload
 
 
-SRC_ENDPOINT = "zion"
-DST_ENDPOINT = "eagle"
-SRC_PATH = "/Users/huihuo.zheng/Documents/Research/AmSC/clearml/alcf_clearml_deployment/examples/job_launching/iri/python/job.sh"
-DST_PATH = "/datascience/hzheng/job.sh"
+SRC_ENDPOINT = os.getenv("GLOBUS_SRC_ENDPOINT", "zion")
+DST_ENDPOINT = os.getenv("GLOBUS_DST_ENDPOINT", "alcf#dtn_eagle")
+SRC_PATH = os.getenv(
+    "GLOBUS_SRC_PATH",
+    "/Users/huihuo.zheng/Documents/Research/AmSC/clearml/alcf_clearml_deployment/examples/job_launching/iri/python/job.sh",
+)
+DST_PATH = os.getenv("GLOBUS_DST_PATH", "/datascience/hzheng/job.sh")
 
 
 def main() -> int:
+    if not SRC_ENDPOINT or not DST_ENDPOINT:
+        raise ValueError(
+            "Set GLOBUS_SRC_ENDPOINT and GLOBUS_DST_ENDPOINT to Globus collection IDs "
+            "or searchable collection names before running this example."
+        )
+
     controller_task = Task.init(
         project_name="AmSC/pipeline-iri-bridge",
         task_name="iri-stage-with-globus-pipeline",
@@ -47,6 +57,7 @@ def main() -> int:
         account="AmSC_Demos",
         queue_name="debug",
         duration=300,
+        note_count=2,
         custom_attributes={"filesystems": "home:eagle"},
         script_path="/lus/eagle/projects/datascience/hzheng/job.sh",
     )

@@ -110,7 +110,9 @@ def _resolve_collection_id(name_or_id: str) -> str:
         result = subprocess.run(cmd, check=False, capture_output=True, text=True)
 
     if result.returncode != 0:
-        raise RuntimeError(f"Failed to resolve collection name: {name_or_id}")
+        stderr = result.stderr.strip()
+        detail = f" (stderr: {stderr})" if stderr else ""
+        raise RuntimeError(f"Failed to resolve collection name: {name_or_id}{detail}")
 
     try:
         data = json.loads(result.stdout)
@@ -417,24 +419,7 @@ def _hydrate_args_from_task(args: argparse.Namespace, task: Any) -> None:
                 setattr(args, arg_name, val)
 
 
-def main() -> int:
-    args = _parse_transfer_args()
-    task = None
-    try:
-        from clearml import Task
-
-        task = Task.init(project_name=args.project_name, task_name=args.task_name)
-    except Exception:
-        task = None
-
-    if task is not None:
-        for param_name in ("Args/token", "General/token", "token"):
-            try:
-                task.delete_parameter(param_name, force=True)
-            except Exception:
-                pass
-        _hydrate_args_from_task(args, task)
-
+def execute_transfer(args: argparse.Namespace) -> int:
     if not all([args.src_endpoint, args.dst_endpoint, args.src_path, args.dst_path]):
         raise ValueError(
             "Missing required args: --src-endpoint, --dst-endpoint, --src-path, --dst-path"
@@ -495,6 +480,31 @@ def main() -> int:
     if status in {"FAILED", "CANCELED"}:
         return 2
     return 0
+
+
+def main() -> int:
+    args = _parse_transfer_args()
+    task = None
+    try:
+        from clearml import Task
+
+        task = Task.init(
+            project_name=args.project_name,
+            task_name=args.task_name,
+            auto_connect_arg_parser=False,
+        )
+    except Exception:
+        task = None
+
+    if task is not None:
+        for param_name in ("Args/token", "General/token", "token"):
+            try:
+                task.delete_parameter(param_name, force=True)
+            except Exception:
+                pass
+        _hydrate_args_from_task(args, task)
+
+    return execute_transfer(args)
 
 
 def _parse_launch_args() -> argparse.Namespace:

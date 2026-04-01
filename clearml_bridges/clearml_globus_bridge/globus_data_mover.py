@@ -1,3 +1,4 @@
+import argparse
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -6,6 +7,48 @@ from clearml import Task
 
 class GlobusDataMover:
     """Create ClearML tasks that run Globus Transfer data movement."""
+
+    def execute(
+        self,
+        project_name: str,
+        task_name: str,
+        src_endpoint: str,
+        dst_endpoint: str,
+        src_path: str,
+        dst_path: str,
+        label: str = "clearml-data-movement",
+        recursive: bool = False,
+        sync_level: Optional[str] = None,
+        poll_interval: int = 10,
+        dry_run: bool = False,
+        no_wait: bool = False,
+        token: Optional[str] = None,
+        token_env_var: str = "GLOBUS_TRANSFER_ACCESS_TOKEN",
+    ) -> int:
+        if not all([src_endpoint, dst_endpoint, src_path, dst_path]):
+            raise ValueError(
+                "Data movement requires src_endpoint, dst_endpoint, src_path, and dst_path."
+            )
+
+        from .data_movement import execute_transfer
+
+        args = argparse.Namespace(
+            project_name=project_name,
+            task_name=task_name,
+            src_endpoint=src_endpoint,
+            dst_endpoint=dst_endpoint,
+            src_path=src_path,
+            dst_path=dst_path,
+            label=label,
+            recursive=recursive,
+            sync_level=sync_level,
+            poll_interval=int(poll_interval),
+            dry_run=dry_run,
+            no_wait=no_wait,
+            token=token,
+            token_env_var=token_env_var,
+        )
+        return execute_transfer(args)
 
     def create(
         self,

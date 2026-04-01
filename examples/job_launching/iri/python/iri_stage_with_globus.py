@@ -1,4 +1,6 @@
+import os
 import sys
+import time
 from pathlib import Path
 
 from clearml import Task
@@ -12,16 +14,39 @@ from clearml_globus_bridge import GlobusDataMover
 from clearml_iri_bridge import IRILauncher, build_job_payload
 
 
-PROJECT_NAME = "AmSC/pipeline-iri-bridge"
+PROJECT_NAME = "AmSC"
 TRANSFER_TASK_NAME = "stage-script-with-globus"
 IRI_TASK_NAME = "submit-iri-job-after-stage-in"
 TRANSFER_QUEUE = "services"
 IRI_QUEUE = "crux-services"
+WAIT_FOR_TRANSFER = True
+TRANSFER_POLL_INTERVAL_SEC = 10
+TRANSFER_TIMEOUT_SEC = 3600
 
 SRC_ENDPOINT = "YOUR_LOCAL_ENDPOINT"
 DST_ENDPOINT = "YOUR_REMOTE_ENDPOINT"
 SRC_PATH = "/path/on/local/machine/job.sh"
 DST_PATH = "/home/hzheng/clearml/alcf_clearml_deployment/examples/job_launching/iri/python/job.sh"
+
+
+def _wait_for_task(task_id: str, poll_interval_sec: int, timeout_sec: int) -> str:
+    terminal_states = {"completed", "failed", "stopped", "closed", "published"}
+    start = time.time()
+    last_status = ""
+
+    while True:
+        remote_task = Task.get_task(task_id=task_id)
+        status = str(remote_task.get_status() or "").lower()
+        if status != last_status:
+            print(f"Transfer task status: {status}")
+            last_status = status
+        if status in terminal_states:
+            return status
+        if time.time() - start > timeout_sec:
+            raise TimeoutError(
+                f"Timed out waiting for transfer task {task_id} after {timeout_sec} seconds."
+            )
+        time.sleep(max(1, poll_interval_sec))
 
 
 def main() -> int:
@@ -48,6 +73,7 @@ def main() -> int:
         account="AmSC_Demos",
         queue_name="debug",
         duration=300,
+        note_count=1,
         custom_attributes={"filesystems": "home:eagle"},
         script_path=DST_PATH,
     )
@@ -64,6 +90,19 @@ def main() -> int:
         tags=["iri-bridge", "stage-in"],
     )
 
+    if WAIT_FOR_TRANSFER:
+        final_status = _wait_for_task(
+            task_id=transfer_task.id,
+            poll_interval_sec=TRANSFER_POLL_INTERVAL_SEC,
+            timeout_sec=TRANSFER_TIMEOUT_SEC,
+        )
+        if final_status != "completed":
+            raise RuntimeError(
+                f"Transfer task {transfer_task.id} finished with status={final_status}; "
+                "not enqueueing the IRI task."
+            )
+        Task.enqueue(submit_task, queue_name=IRI_QUEUE)
+
     print(f"Enqueued transfer task: {transfer_task.id} on queue {TRANSFER_QUEUE}")
     try:
         print(f"Transfer log URL: {transfer_task.get_output_log_web_page()}")
@@ -74,11 +113,14 @@ def main() -> int:
         print(f"IRI log URL: {submit_task.get_output_log_web_page()}")
     except Exception:
         pass
-    print(
-        "Enqueue the IRI task after the transfer task completes so the remote script "
-        "is present at the destination path."
-    )
-    print(f"Suggested enqueue command: Task.enqueue(submit_task, queue_name={IRI_QUEUE!r})")
+    if WAIT_FOR_TRANSFER:
+        print(f"Enqueued IRI task: {submit_task.id} on queue {IRI_QUEUE}")
+    else:
+        print(
+            "Enqueue the IRI task after the transfer task completes so the remote script "
+            "is present at the destination path."
+        )
+        print(f"Suggested enqueue command: Task.enqueue(submit_task, queue_name={IRI_QUEUE!r})")
     return 0
 
 

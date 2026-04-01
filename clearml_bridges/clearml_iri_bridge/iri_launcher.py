@@ -139,6 +139,8 @@ def build_job_payload(
     account: str = "",
     queue_name: str = "",
     duration: Optional[int] = None,
+    node_count: Optional[int] = None,
+    note_count: Optional[int] = None,
     custom_attributes: Optional[Dict[str, Any]] = None,
     extra_attributes: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
@@ -189,6 +191,9 @@ def build_job_payload(
         "stderr_path": stderr_path,
         "attributes": attrs,
     }
+    resolved_note_count = note_count if note_count is not None else node_count
+    if resolved_note_count is not None:
+        payload["resources"] = {"note_count": int(resolved_note_count)}
     return payload
 
 
@@ -201,6 +206,8 @@ def build_alcf_job_payload(
     account: str,
     queue_name: str,
     duration: int,
+    node_count: Optional[int] = None,
+    note_count: Optional[int] = None,
     executable: str = "/bin/bash",
     arguments: Optional[list[str]] = None,
     command: str = "",
@@ -220,6 +227,8 @@ def build_alcf_job_payload(
         account=account,
         queue_name=queue_name,
         duration=duration,
+        node_count=node_count,
+        note_count=note_count,
         executable=executable,
         arguments=arguments,
         command=command,
