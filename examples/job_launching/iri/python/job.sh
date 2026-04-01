@@ -16,4 +16,7 @@ export PPN=4
 
 
 mpiexec -n $((PBS_JOBSIZE*PPN)) --ppn $PPN python -c "from mpi4py import MPI; import socket; comm = MPI.COMM_WORLD; rank = comm.Get_rank(); print(f'I am Rank {rank} of {comm.size} on {socket.gethostname()}')"
+
+echo "Sleep for 500 seconds to allow time for job monitoring..."
+sleep 500
 echo "Done sleeping, exiting now."
