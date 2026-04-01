@@ -191,9 +191,9 @@ def build_job_payload(
         "stderr_path": stderr_path,
         "attributes": attrs,
     }
-    resolved_note_count = note_count if note_count is not None else node_count
-    if resolved_note_count is not None:
-        payload["resources"] = {"note_count": int(resolved_note_count)}
+    resolved_node_count = node_count if node_count is not None else note_count
+    if resolved_node_count is not None:
+        payload["resources"] = {"node_count": int(resolved_node_count)}
     return payload
 
 

@@ -126,7 +126,7 @@ When `stdout_path` and `stderr_path` exist and are readable by the ClearML worke
 - ALCF output and error paths under `/eagle/...` are currently unreliable when jobs are submitted through the facility API service nodes. Based on discussion with the ALCF team, the `facility-api-vmw-*` VMs do not mount Eagle, and jobs submitted from that path may not generate `stdout_path` and `stderr_path` files on Eagle even though the job itself completes.
 - For ALCF, output and error files are more reliable when written to the user's home directory, for example `/home/<user>/...`, instead of `/eagle/...`.
 - The hostname shown in PBS `Output_Path` and `Error_Path` reflects the host that submitted the request. For facility API submissions this may appear as `facility-api-vmw-01...`, while login-node submissions may show `polaris-login-01...`.
-- The bridge helper supports `resources.note_count` through `build_job_payload(..., note_count=...)`. Existing `node_count` callers are still accepted as a compatibility alias and mapped to `note_count`.
+- The bridge helper supports `resources.node_count` through `build_job_payload(..., node_count=...)`. Existing `note_count` callers are still accepted as a compatibility alias and mapped to `node_count`.
 
 ## Python API
 

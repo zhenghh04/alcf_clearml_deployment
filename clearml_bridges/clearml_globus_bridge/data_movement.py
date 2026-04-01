@@ -497,7 +497,38 @@ def main() -> int:
         task = None
 
     if task is not None:
-        for param_name in ("Args/token", "General/token", "token"):
+        for param_name in (
+            "Args/token",
+            "General/token",
+            "token",
+            "task_name",
+            "project_name",
+            "src_endpoint",
+            "dst_endpoint",
+            "src_path",
+            "dst_path",
+            "sync_level",
+            "poll_interval",
+            "token_env_var",
+            "General/task_name",
+            "General/project_name",
+            "General/src_endpoint",
+            "General/dst_endpoint",
+            "General/src_path",
+            "General/dst_path",
+            "General/sync_level",
+            "General/poll_interval",
+            "General/token_env_var",
+            "Args/task_name",
+            "Args/project_name",
+            "Args/src_endpoint",
+            "Args/dst_endpoint",
+            "Args/src_path",
+            "Args/dst_path",
+            "Args/sync_level",
+            "Args/poll_interval",
+            "Args/token_env_var",
+        ):
             try:
                 task.delete_parameter(param_name, force=True)
             except Exception:

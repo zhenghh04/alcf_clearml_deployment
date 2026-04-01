@@ -57,7 +57,7 @@ def main() -> int:
         account="AmSC_Demos",
         queue_name="debug",
         duration=300,
-        note_count=2,
+        node_count=2,
         custom_attributes={"filesystems": "home:eagle"},
         script_path="/lus/eagle/projects/datascience/hzheng/job.sh",
     )

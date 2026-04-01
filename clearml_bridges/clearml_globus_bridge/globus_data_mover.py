@@ -118,6 +118,41 @@ class GlobusDataMover:
             create_kwargs.pop("reuse_last_task_id", None)
             task = Task.create(**create_kwargs)
 
+        redundant_param_names = (
+            "task_name",
+            "project_name",
+            "src_endpoint",
+            "dst_endpoint",
+            "src_path",
+            "dst_path",
+            "sync_level",
+            "poll_interval",
+            "token_env_var",
+            "General/task_name",
+            "General/project_name",
+            "General/src_endpoint",
+            "General/dst_endpoint",
+            "General/src_path",
+            "General/dst_path",
+            "General/sync_level",
+            "General/poll_interval",
+            "General/token_env_var",
+            "Args/task_name",
+            "Args/project_name",
+            "Args/src_endpoint",
+            "Args/dst_endpoint",
+            "Args/src_path",
+            "Args/dst_path",
+            "Args/sync_level",
+            "Args/poll_interval",
+            "Args/token_env_var",
+        )
+        for param_name in redundant_param_names:
+            try:
+                task.delete_parameter(param_name, force=True)
+            except Exception:
+                pass
+
         task.set_parameters_as_dict(
             {
                 "Args/src-endpoint": src_endpoint,

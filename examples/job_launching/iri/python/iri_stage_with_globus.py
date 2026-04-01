@@ -73,7 +73,7 @@ def main() -> int:
         account="AmSC_Demos",
         queue_name="debug",
         duration=300,
-        note_count=1,
+        node_count=1,
         custom_attributes={"filesystems": "home:eagle"},
         script_path=DST_PATH,
     )

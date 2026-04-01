@@ -22,7 +22,7 @@ def main() -> int:
         account="AmSC_Demos",
         queue_name="debug",
         duration=300,
-        note_count=1,
+        node_count=1,
         custom_attributes={"filesystems": "home:eagle"},
         command="echo hello from ClearML IRI bridge",
     )
