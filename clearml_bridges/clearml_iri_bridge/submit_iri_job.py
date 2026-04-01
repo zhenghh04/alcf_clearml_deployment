@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 import shlex
+import signal
 import tempfile
 import time
 from pathlib import Path
@@ -17,6 +18,17 @@ FACILITY_BASE_URLS = {
     "nersc": "https://api.nersc.gov",
     "olcf": "https://s3m.olcf.ornl.gov",
 }
+
+_CANCEL_CONTEXT: Dict[str, Any] = {
+    "armed": False,
+    "fired": False,
+    "session": None,
+    "cancel_url": "",
+    "headers": None,
+    "request_timeout_sec": 0,
+    "logger": None,
+}
+_PREVIOUS_SIGNAL_HANDLERS: Dict[int, Any] = {}
 
 
 def clean_str(value: Any) -> str:
@@ -616,6 +628,96 @@ def request_data(
     return response.json()
 
 
+def _arm_cancel_handler(
+    *,
+    session: requests.Session,
+    cancel_url: str,
+    headers: Dict[str, str],
+    request_timeout_sec: int,
+    logger: Any,
+) -> None:
+    _CANCEL_CONTEXT.update(
+        {
+            "armed": True,
+            "fired": False,
+            "session": session,
+            "cancel_url": cancel_url,
+            "headers": dict(headers),
+            "request_timeout_sec": request_timeout_sec,
+            "logger": logger,
+        }
+    )
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        if sig not in _PREVIOUS_SIGNAL_HANDLERS:
+            _PREVIOUS_SIGNAL_HANDLERS[sig] = signal.getsignal(sig)
+        signal.signal(sig, _handle_termination_signal)
+
+
+def _disarm_cancel_handler() -> None:
+    _CANCEL_CONTEXT.update(
+        {
+            "armed": False,
+            "fired": False,
+            "session": None,
+            "cancel_url": "",
+            "headers": None,
+            "request_timeout_sec": 0,
+            "logger": None,
+        }
+    )
+    for sig, handler in list(_PREVIOUS_SIGNAL_HANDLERS.items()):
+        try:
+            signal.signal(sig, handler)
+        except Exception:
+            pass
+        _PREVIOUS_SIGNAL_HANDLERS.pop(sig, None)
+
+
+def _fire_remote_cancel(reason: str) -> Dict[str, Any]:
+    if not _CANCEL_CONTEXT.get("armed") or _CANCEL_CONTEXT.get("fired"):
+        return {}
+    _CANCEL_CONTEXT["fired"] = True
+    session = _CANCEL_CONTEXT.get("session")
+    cancel_url = clean_str(_CANCEL_CONTEXT.get("cancel_url"))
+    headers = _CANCEL_CONTEXT.get("headers") or {}
+    request_timeout_sec = int(_CANCEL_CONTEXT.get("request_timeout_sec") or 0)
+    logger = _CANCEL_CONTEXT.get("logger")
+    if not session or not cancel_url:
+        return {}
+    if logger is not None:
+        try:
+            logger.report_text(f"[iri] {reason}; forwarding cancel to {cancel_url}")
+        except Exception:
+            pass
+    try:
+        payload = request_json(
+            session=session,
+            method="DELETE",
+            url=cancel_url,
+            headers=headers,
+            request_timeout_sec=request_timeout_sec,
+        )
+    except Exception as exc:
+        if logger is not None:
+            try:
+                logger.report_text(f"[iri] cancel request failed: {exc}")
+            except Exception:
+                pass
+        return {"error": str(exc)}
+    if logger is not None:
+        try:
+            logger.report_text(f"[iri] cancel response={json.dumps(payload, sort_keys=True)}")
+        except Exception:
+            pass
+    return payload
+
+
+def _handle_termination_signal(signum: int, _frame: Any) -> None:
+    signal_name = getattr(signal.Signals(signum), "name", str(signum))
+    _fire_remote_cancel(f"received {signal_name}")
+    raise SystemExit(128 + int(signum))
+
+
 def _extract_resource_items(payload: Any) -> List[Dict[str, Any]]:
     if isinstance(payload, list):
         return [item for item in payload if isinstance(item, dict)]
@@ -709,24 +811,7 @@ def poll_until_terminal(
         except Exception:
             task_status = ""
         if task_status in {"stopped", "stopping"}:
-            logger.report_text(
-                f"[iri] ClearML task status={task_status}; forwarding cancel to {cancel_url}"
-            )
-            try:
-                cancel_response = request_json(
-                    session=session,
-                    method="DELETE",
-                    url=cancel_url,
-                    headers=headers,
-                    request_timeout_sec=request_timeout_sec,
-                )
-            except Exception as exc:
-                logger.report_text(f"[iri] cancel request failed: {exc}")
-                cancel_response = {"error": str(exc)}
-            else:
-                logger.report_text(
-                    f"[iri] cancel response={json.dumps(cancel_response, sort_keys=True)}"
-                )
+            cancel_response = _fire_remote_cancel(f"ClearML task status={task_status}")
             if isinstance(last_payload, dict):
                 last_payload = dict(last_payload)
                 last_payload["clearml_cancel_response"] = cancel_response
@@ -848,19 +933,29 @@ def main() -> None:
             job_id=job_id,
         ),
     )
-    status, status_payload, elapsed, clearml_cancel_requested = poll_until_terminal(
+    _arm_cancel_handler(
         session=session,
-        status_url=status_url,
         cancel_url=cancel_url,
         headers=headers,
         request_timeout_sec=args.request_timeout_sec,
-        status_field=args.status_field,
-        terminal_states=terminal_states,
-        timeout_sec=args.timeout_sec,
-        poll_interval=args.poll_interval,
-        task=task,
         logger=logger,
     )
+    try:
+        status, status_payload, elapsed, clearml_cancel_requested = poll_until_terminal(
+            session=session,
+            status_url=status_url,
+            cancel_url=cancel_url,
+            headers=headers,
+            request_timeout_sec=args.request_timeout_sec,
+            status_field=args.status_field,
+            terminal_states=terminal_states,
+            timeout_sec=args.timeout_sec,
+            poll_interval=args.poll_interval,
+            task=task,
+            logger=logger,
+        )
+    finally:
+        _disarm_cancel_handler()
 
     final_payload = status_payload
     if args.result_path_template:

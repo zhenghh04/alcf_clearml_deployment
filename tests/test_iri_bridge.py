@@ -1,9 +1,13 @@
+import signal
 from unittest.mock import MagicMock
 
 import pytest
 
 from clearml_iri_bridge.iri_launcher import IRILauncher
 from clearml_iri_bridge.submit_iri_job import (
+    _arm_cancel_handler,
+    _disarm_cancel_handler,
+    _handle_termination_signal,
     build_headers,
     format_path_template,
     make_url,
@@ -109,6 +113,38 @@ def test_poll_until_terminal_cancels_remote_job_when_clearml_task_stops(
     assert canceled is True
     assert payload["clearml_cancel_response"] == {"canceled": True}
     assert elapsed >= 0
+    assert events == [("DELETE", "https://api.example.org/cancel/job-123")]
+
+
+def test_signal_handler_cancels_remote_job_before_exit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events: list[tuple[str, str]] = []
+
+    def fake_request_json(**kwargs):
+        events.append((kwargs["method"], kwargs["url"]))
+        return {"canceled": True}
+
+    monkeypatch.setattr(
+        "clearml_iri_bridge.submit_iri_job.request_json",
+        fake_request_json,
+    )
+
+    logger = MagicMock()
+    _arm_cancel_handler(
+        session=MagicMock(),
+        cancel_url="https://api.example.org/cancel/job-123",
+        headers={"Authorization": "Bearer token"},
+        request_timeout_sec=5,
+        logger=logger,
+    )
+    try:
+        with pytest.raises(SystemExit) as exc_info:
+            _handle_termination_signal(signal.SIGTERM, None)
+    finally:
+        _disarm_cancel_handler()
+
+    assert exc_info.value.code == 128 + int(signal.SIGTERM)
     assert events == [("DELETE", "https://api.example.org/cancel/job-123")]
 
 
