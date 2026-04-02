@@ -13,11 +13,14 @@ import requests
 from clearml import Task
 from requests import HTTPError
 
-FACILITY_BASE_URLS = {
-    "alcf": "https://api.alcf.anl.gov",
-    "nersc": "https://api.nersc.gov",
-    "olcf": "https://s3m.olcf.ornl.gov",
-}
+from ._shared import (
+    FACILITY_BASE_URLS,
+    _combine_shell_text,
+    _escape_graphql_string,
+    _normalize_precommands,
+    _normalize_script_text,
+    clean_str,
+)
 
 _CANCEL_CONTEXT: Dict[str, Any] = {
     "armed": False,
@@ -29,15 +32,6 @@ _CANCEL_CONTEXT: Dict[str, Any] = {
     "logger": None,
 }
 _PREVIOUS_SIGNAL_HANDLERS: Dict[int, Any] = {}
-
-
-def clean_str(value: Any) -> str:
-    if value is None:
-        return ""
-    normalized = str(value).strip()
-    if normalized.lower() in {"", "none", "null"}:
-        return ""
-    return normalized
 
 
 def resolve_artifact_path(raw_path: str) -> Path:
@@ -72,47 +66,6 @@ def parse_json_list(raw: str, arg_name: str, default: List[str]) -> List[str]:
     if not isinstance(parsed, list):
         raise ValueError(f"{arg_name} must be a JSON list")
     return [str(item) for item in parsed]
-
-
-def _escape_graphql_string(value: str) -> str:
-    return value.replace("\\", "\\\\").replace('"', '\\"')
-
-
-def _normalize_script_text(script_text: str) -> str:
-    lines = []
-    for raw_line in script_text.splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#!"):
-            continue
-        lines.append(line)
-    return "; ".join(lines)
-
-
-def _normalize_precommands(
-    precommand: str = "",
-    precommands: Optional[List[str]] = None,
-) -> str:
-    commands = []
-    normalized_precommand = clean_str(precommand)
-    if normalized_precommand:
-        commands.append(normalized_precommand)
-    if precommands:
-        for item in precommands:
-            normalized = clean_str(item)
-            if normalized:
-                commands.append(normalized)
-
-    normalized_commands = []
-    for command in commands:
-        text = _normalize_script_text(command)
-        if text:
-            normalized_commands.append(text)
-    return "; ".join(normalized_commands)
-
-
-def _combine_shell_text(prelude: str, main: str) -> str:
-    parts = [part for part in (prelude, main) if part]
-    return "; ".join(parts)
 
 
 def normalize_job_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -290,6 +243,13 @@ def resolve_api_base_url(facility: str) -> str:
         raise ValueError(
             "IRI facility is required. Pass --facility alcf|nersc|olcf or export IRI_FACILITY."
         )
+    if normalized == "custom":
+        url = clean_str(os.getenv("IRI_API_BASE_URL", ""))
+        if not url:
+            raise ValueError(
+                "facility='custom' requires IRI_API_BASE_URL to be set in the environment."
+            )
+        return url
     if normalized not in FACILITY_BASE_URLS:
         supported = ", ".join(sorted(FACILITY_BASE_URLS))
         raise ValueError(f"Unsupported facility '{normalized}'. Use one of: {supported}.")
@@ -421,88 +381,43 @@ def parse_exit_code(payload: Dict[str, Any]) -> Optional[int]:
     return None
 
 
+_SCRUB_PARAM_BASE_NAMES = {
+    "artifact_path",
+    "auth_header_name",
+    "auth_token",
+    "auth_token_prefix",
+    "cancel_path_template",
+    "headers_json",
+    "id_field",
+    "job_payload_file",
+    "job_payload_json",
+    "log_stderr",
+    "log_stdout",
+    "max_log_chars",
+    "poll_interval",
+    "project_name",
+    "request_timeout_sec",
+    "result_field",
+    "result_path_template",
+    "script_file",
+    "status_field",
+    "status_path_template",
+    "submit_path",
+    "success_states_json",
+    "task_name",
+    "task_type",
+    "terminal_states_json",
+    "timeout_sec",
+}
+
+
 def scrub_task_parameters(task: Task) -> None:
-    for param_name in (
-        "Args/artifact_path",
-        "Args/auth_header_name",
-        "Args/auth_token",
-        "Args/auth_token_prefix",
-        "Args/headers_json",
-        "Args/id_field",
-        "Args/job_payload_file",
-        "Args/job_payload_json",
-        "Args/log_stderr",
-        "Args/log_stdout",
-        "Args/max_log_chars",
-        "Args/poll_interval",
-        "Args/project_name",
-        "Args/request_timeout_sec",
-        "Args/result_field",
-        "Args/result_path_template",
-        "Args/cancel_path_template",
-        "Args/script_file",
-        "Args/status_field",
-        "Args/status_path_template",
-        "Args/submit_path",
-        "Args/success_states_json",
-        "Args/task_name",
-        "Args/task_type",
-        "Args/terminal_states_json",
-        "Args/timeout_sec",
-        "General/artifact_path",
-        "General/auth_header_name",
-        "General/auth_token",
-        "General/auth_token_prefix",
-        "General/headers_json",
-        "General/id_field",
-        "General/job_payload_file",
-        "General/job_payload_json",
-        "General/log_stderr",
-        "General/log_stdout",
-        "General/max_log_chars",
-        "General/poll_interval",
-        "General/project_name",
-        "General/request_timeout_sec",
-        "General/result_field",
-        "General/result_path_template",
-        "General/cancel_path_template",
-        "General/script_file",
-        "General/status_field",
-        "General/status_path_template",
-        "General/submit_path",
-        "General/success_states_json",
-        "General/task_name",
-        "General/task_type",
-        "General/terminal_states_json",
-        "General/timeout_sec",
-        "artifact_path",
-        "auth_header_name",
-        "auth_token",
-        "auth_token_prefix",
-        "bridge/auth_token",
-        "headers_json",
-        "id_field",
-        "job_payload_file",
-        "job_payload_json",
-        "log_stderr",
-        "log_stdout",
-        "max_log_chars",
-        "poll_interval",
-        "project_name",
-        "request_timeout_sec",
-        "result_field",
-        "result_path_template",
-        "cancel_path_template",
-        "script_file",
-        "status_field",
-        "status_path_template",
-        "submit_path",
-        "success_states_json",
-        "task_name",
-        "task_type",
-        "terminal_states_json",
-        "timeout_sec",
-    ):
+    to_scrub = ["bridge/auth_token"]
+    for name in _SCRUB_PARAM_BASE_NAMES:
+        to_scrub.append(name)
+        to_scrub.append(f"Args/{name}")
+        to_scrub.append(f"General/{name}")
+    for param_name in to_scrub:
         try:
             task.delete_parameter(param_name, force=True)
         except Exception:

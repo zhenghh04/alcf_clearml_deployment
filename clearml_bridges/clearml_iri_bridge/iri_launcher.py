@@ -7,12 +7,13 @@ from typing import Any, Dict, Optional
 import requests
 from clearml import Task
 
-
-FACILITY_BASE_URLS = {
-    "alcf": "https://api.alcf.anl.gov",
-    "nersc": "https://api.nersc.gov",
-    "olcf": "https://s3m.olcf.ornl.gov",
-}
+from ._shared import (
+    FACILITY_BASE_URLS,
+    _combine_shell_text,
+    _escape_graphql_string,
+    _normalize_precommands,
+    _normalize_script_text,
+)
 
 
 def _looks_like_uuid(value: str) -> bool:
@@ -79,46 +80,6 @@ def _resolve_alcf_resource_id(
         if target in names:
             return candidate_id
     return ""
-
-
-def _escape_graphql_string(value: str) -> str:
-    return value.replace("\\", "\\\\").replace('"', '\\"')
-
-
-def _normalize_script_text(script_text: str) -> str:
-    lines = []
-    for raw_line in script_text.splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#!"):
-            continue
-        lines.append(line)
-    return "; ".join(lines)
-
-
-def _normalize_precommands(
-    precommand: str = "",
-    precommands: Optional[list[str]] = None,
-) -> str:
-    commands = []
-    normalized_precommand = precommand.strip()
-    if normalized_precommand:
-        commands.append(normalized_precommand)
-    if precommands:
-        for item in precommands:
-            normalized = str(item).strip()
-            if normalized:
-                commands.append(normalized)
-    normalized = []
-    for command in commands:
-        text = _normalize_script_text(command)
-        if text:
-            normalized.append(text)
-    return "; ".join(normalized)
-
-
-def _combine_shell_text(prelude: str, main: str) -> str:
-    parts = [part for part in (prelude, main) if part]
-    return "; ".join(parts)
 
 
 def build_job_payload(
