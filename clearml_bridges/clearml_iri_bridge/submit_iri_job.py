@@ -4,6 +4,7 @@ import os
 import shlex
 import signal
 import tempfile
+import threading
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -24,13 +25,14 @@ from ._shared import (
 
 _CANCEL_CONTEXT: Dict[str, Any] = {
     "armed": False,
-    "fired": False,
     "session": None,
     "cancel_url": "",
     "headers": None,
     "request_timeout_sec": 0,
     "logger": None,
+    "watcher_stop": None,
 }
+_CANCEL_FIRED = threading.Event()
 _PREVIOUS_SIGNAL_HANDLERS: Dict[int, Any] = {}
 
 
@@ -543,25 +545,51 @@ def request_data(
     return response.json()
 
 
+def _cancel_watcher_loop(task: Task, stop_event: threading.Event, check_interval: float) -> None:
+    """Daemon thread: polls ClearML task status and fires cancel when the task is stopped."""
+    while not stop_event.wait(check_interval):
+        if not _CANCEL_CONTEXT.get("armed"):
+            return
+        try:
+            remote_task = Task.get_task(task_id=task.id)
+            task_status = clean_str(remote_task.get_status()).lower()
+        except Exception:
+            continue
+        if task_status in {"stopped", "stopping"}:
+            _fire_remote_cancel(f"cancel watcher: ClearML task status={task_status}")
+            return
+
+
 def _arm_cancel_handler(
     *,
+    task: Task,
     session: requests.Session,
     cancel_url: str,
     headers: Dict[str, str],
     request_timeout_sec: int,
     logger: Any,
+    cancel_check_interval: float = 3.0,
 ) -> None:
+    _CANCEL_FIRED.clear()
+    stop_event = threading.Event()
     _CANCEL_CONTEXT.update(
         {
             "armed": True,
-            "fired": False,
             "session": session,
             "cancel_url": cancel_url,
             "headers": dict(headers),
             "request_timeout_sec": request_timeout_sec,
             "logger": logger,
+            "watcher_stop": stop_event,
         }
     )
+    watcher = threading.Thread(
+        target=_cancel_watcher_loop,
+        args=(task, stop_event, cancel_check_interval),
+        daemon=True,
+        name="iri-cancel-watcher",
+    )
+    watcher.start()
     for sig in (signal.SIGTERM, signal.SIGINT):
         if sig not in _PREVIOUS_SIGNAL_HANDLERS:
             _PREVIOUS_SIGNAL_HANDLERS[sig] = signal.getsignal(sig)
@@ -569,15 +597,18 @@ def _arm_cancel_handler(
 
 
 def _disarm_cancel_handler() -> None:
+    stop_event = _CANCEL_CONTEXT.get("watcher_stop")
+    if stop_event is not None:
+        stop_event.set()
     _CANCEL_CONTEXT.update(
         {
             "armed": False,
-            "fired": False,
             "session": None,
             "cancel_url": "",
             "headers": None,
             "request_timeout_sec": 0,
             "logger": None,
+            "watcher_stop": None,
         }
     )
     for sig, handler in list(_PREVIOUS_SIGNAL_HANDLERS.items()):
@@ -589,9 +620,9 @@ def _disarm_cancel_handler() -> None:
 
 
 def _fire_remote_cancel(reason: str) -> Dict[str, Any]:
-    if not _CANCEL_CONTEXT.get("armed") or _CANCEL_CONTEXT.get("fired"):
+    if not _CANCEL_CONTEXT.get("armed") or _CANCEL_FIRED.is_set():
         return {}
-    _CANCEL_CONTEXT["fired"] = True
+    _CANCEL_FIRED.set()
     session = _CANCEL_CONTEXT.get("session")
     cancel_url = clean_str(_CANCEL_CONTEXT.get("cancel_url"))
     headers = _CANCEL_CONTEXT.get("headers") or {}
@@ -720,16 +751,7 @@ def poll_until_terminal(
                 f"Timeout waiting for terminal state after {timeout_sec}s. Last payload: {last_payload}"
             )
 
-        try:
-            remote_task = Task.get_task(task_id=task.id)
-            task_status = clean_str(remote_task.get_status()).lower()
-        except Exception:
-            task_status = ""
-        if task_status in {"stopped", "stopping"}:
-            cancel_response = _fire_remote_cancel(f"ClearML task status={task_status}")
-            if isinstance(last_payload, dict):
-                last_payload = dict(last_payload)
-                last_payload["clearml_cancel_response"] = cancel_response
+        if _CANCEL_FIRED.is_set():
             return "CANCELED", last_payload, elapsed, True
 
         try:
@@ -849,6 +871,7 @@ def main() -> None:
         ),
     )
     _arm_cancel_handler(
+        task=task,
         session=session,
         cancel_url=cancel_url,
         headers=headers,
