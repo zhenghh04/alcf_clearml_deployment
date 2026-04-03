@@ -1,4 +1,5 @@
 import argparse
+import atexit
 import json
 import os
 import shlex
@@ -33,6 +34,7 @@ _CANCEL_CONTEXT: Dict[str, Any] = {
     "watcher_stop": None,
 }
 _CANCEL_FIRED = threading.Event()
+_CANCEL_RESPONSE: Dict[str, Any] = {}
 _PREVIOUS_SIGNAL_HANDLERS: Dict[int, Any] = {}
 
 
@@ -560,6 +562,11 @@ def _cancel_watcher_loop(task: Task, stop_event: threading.Event, check_interval
             return
 
 
+def _atexit_cancel() -> None:
+    """Last-resort cancel: fires if the process exits before cancel was sent."""
+    _fire_remote_cancel("atexit: process exiting before cancel was sent")
+
+
 def _arm_cancel_handler(
     *,
     task: Task,
@@ -570,7 +577,9 @@ def _arm_cancel_handler(
     logger: Any,
     cancel_check_interval: float = 3.0,
 ) -> None:
+    global _CANCEL_RESPONSE
     _CANCEL_FIRED.clear()
+    _CANCEL_RESPONSE = {}
     stop_event = threading.Event()
     _CANCEL_CONTEXT.update(
         {
@@ -594,9 +603,11 @@ def _arm_cancel_handler(
         if sig not in _PREVIOUS_SIGNAL_HANDLERS:
             _PREVIOUS_SIGNAL_HANDLERS[sig] = signal.getsignal(sig)
         signal.signal(sig, _handle_termination_signal)
+    atexit.register(_atexit_cancel)
 
 
 def _disarm_cancel_handler() -> None:
+    atexit.unregister(_atexit_cancel)
     stop_event = _CANCEL_CONTEXT.get("watcher_stop")
     if stop_event is not None:
         stop_event.set()
@@ -620,6 +631,7 @@ def _disarm_cancel_handler() -> None:
 
 
 def _fire_remote_cancel(reason: str) -> Dict[str, Any]:
+    global _CANCEL_RESPONSE
     if not _CANCEL_CONTEXT.get("armed") or _CANCEL_FIRED.is_set():
         return {}
     _CANCEL_FIRED.set()
@@ -649,12 +661,14 @@ def _fire_remote_cancel(reason: str) -> Dict[str, Any]:
                 logger.report_text(f"[iri] cancel request failed: {exc}")
             except Exception:
                 pass
-        return {"error": str(exc)}
+        _CANCEL_RESPONSE = {"error": str(exc)}
+        return _CANCEL_RESPONSE
     if logger is not None:
         try:
             logger.report_text(f"[iri] cancel response={json.dumps(payload, sort_keys=True)}")
         except Exception:
             pass
+    _CANCEL_RESPONSE = payload
     return payload
 
 
@@ -751,8 +765,17 @@ def poll_until_terminal(
                 f"Timeout waiting for terminal state after {timeout_sec}s. Last payload: {last_payload}"
             )
 
+        # Check ClearML task status directly (belt and suspenders alongside watcher thread)
+        try:
+            remote_task = Task.get_task(task_id=task.id)
+            task_status = clean_str(remote_task.get_status()).lower()
+            if task_status in {"stopped", "stopping"}:
+                _fire_remote_cancel(f"poll loop: ClearML task status={task_status}")
+        except Exception:
+            pass
+
         if _CANCEL_FIRED.is_set():
-            return "CANCELED", last_payload, elapsed, True
+            return "CANCELED", {**last_payload, "clearml_cancel_response": _CANCEL_RESPONSE}, elapsed, True
 
         try:
             last_payload = request_json(

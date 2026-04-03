@@ -95,19 +95,35 @@ def test_poll_until_terminal_cancels_remote_job_when_clearml_task_stops(
     )
 
     logger = MagicMock()
-    status, payload, elapsed, canceled = poll_until_terminal(
-        session=MagicMock(),
-        status_url="https://api.example.org/status/job-123",
-        cancel_url="https://api.example.org/cancel/job-123",
-        headers={"Authorization": "Bearer token"},
+    session = MagicMock()
+    task_mock = MagicMock(id="task-123")
+    cancel_url = "https://api.example.org/cancel/job-123"
+    headers = {"Authorization": "Bearer token"}
+
+    _arm_cancel_handler(
+        task=task_mock,
+        session=session,
+        cancel_url=cancel_url,
+        headers=headers,
         request_timeout_sec=5,
-        status_field="status.state",
-        terminal_states=["COMPLETED", "FAILED", "CANCELED"],
-        timeout_sec=30,
-        poll_interval=1,
-        task=MagicMock(id="task-123"),
         logger=logger,
     )
+    try:
+        status, payload, elapsed, canceled = poll_until_terminal(
+            session=session,
+            status_url="https://api.example.org/status/job-123",
+            cancel_url=cancel_url,
+            headers=headers,
+            request_timeout_sec=5,
+            status_field="status.state",
+            terminal_states=["COMPLETED", "FAILED", "CANCELED"],
+            timeout_sec=30,
+            poll_interval=1,
+            task=task_mock,
+            logger=logger,
+        )
+    finally:
+        _disarm_cancel_handler()
 
     assert status == "CANCELED"
     assert canceled is True
@@ -132,6 +148,7 @@ def test_signal_handler_cancels_remote_job_before_exit(
 
     logger = MagicMock()
     _arm_cancel_handler(
+        task=MagicMock(id="task-456"),
         session=MagicMock(),
         cancel_url="https://api.example.org/cancel/job-123",
         headers={"Authorization": "Bearer token"},
