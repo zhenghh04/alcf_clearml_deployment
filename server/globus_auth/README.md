@@ -21,7 +21,7 @@ Globus auth setup guide:
 
 Use a `Confidential Client` app for this connector and register:
 
-- Redirect URI: `http://localhost:8000/callback` (local dev)
+- Redirect URI: `http://localhost:8503/callback` (local dev)
 - Scopes:
   - `openid`
   - `profile`
@@ -50,7 +50,7 @@ Put that value into `CONNECTOR_FERNET_KEY`.
 ```bash
 pip install -r server/globus_auth/requirements.txt
 set -a; source server/globus_auth/.env; set +a
-uvicorn server.globus_auth.main:app --host 0.0.0.0 --port 8000
+uvicorn server.globus_auth.main:app --host 0.0.0.0 --port 8503
 ```
 
 Or use the launcher:
@@ -95,7 +95,7 @@ Use your ClearML user id and email (from ClearML profile/API).
 Open in browser:
 
 ```bash
-http://localhost:8000/login?clearml_user_id=<CLEARML_USER_ID>&email=<EMAIL>
+http://localhost:8503/login?clearml_user_id=<CLEARML_USER_ID>&email=<EMAIL>
 ```
 
 After consent, callback stores encrypted token in SQLite (`CONNECTOR_DB_PATH`).
@@ -103,7 +103,7 @@ After consent, callback stores encrypted token in SQLite (`CONNECTOR_DB_PATH`).
 ## 5) Submit on behalf of user
 
 ```bash
-curl -sS -X POST "http://localhost:8000/submit" \
+curl -sS -X POST "http://localhost:8503/submit" \
   -H "Content-Type: application/json" \
   -H "X-Connector-Key: ${CONNECTOR_SHARED_SECRET}" \
   -d '{
