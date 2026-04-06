@@ -901,6 +901,9 @@ def main() -> None:
         request_timeout_sec=args.request_timeout_sec,
         logger=logger,
     )
+    task.register_abort_callback(
+        lambda: _fire_remote_cancel("ClearML abort callback: task terminated")
+    )
     try:
         status, status_payload, elapsed, clearml_cancel_requested = poll_until_terminal(
             session=session,
