@@ -17,6 +17,13 @@ export https_proxy=http://proxy.ccs.ornl.gov:3128
 export HTTP_PROXY=http://proxy.ccs.ornl.gov:3128
 export HTTPS_PROXY=http://proxy.ccs.ornl.gov:3128
 
+# Activate the ClearML Python environment so the right Python is in PATH
+source $HOME/clearml/alcf_clearml_deployment/clients/clearml_agent_setup/frontier/conda.sh
+
+# Skip pip/venv install and use the pre-built venv directly (extra_docker_arguments don't apply to bare-metal)
+export CLEARML_AGENT_SKIP_PYTHON_ENV_INSTALL=1
+export CLEARML_AGENT_SKIP_PIP_VENV_INSTALL=$HOME/clearml/alcf_clearml_deployment/clients/clearml_agent_setup/frontier/envs/clearml/bin/python
+
 ${CLEARML_PRE_SETUP}
 
 ${CLEARML_AGENT_EXECUTE}
