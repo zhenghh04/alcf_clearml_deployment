@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -l
 #SBATCH --job-name=clearml_${CLEARML_TASK.id}
 #SBATCH --time=${CLEARML_TASK.hyperparams.properties.walltime.value:00:30:00}
 #SBATCH --nodes=${CLEARML_TASK.hyperparams.properties.num_nodes.value:1}
