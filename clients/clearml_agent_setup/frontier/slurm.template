@@ -9,7 +9,6 @@
 #SBATCH --output=clearml_%j.out
 
 # Point to the correct ClearML config — avoids picking up any old ~/.clearml.conf
-export CLEARML_CONFIG_FILE=$HOME/clearml/alcf_clearml_deployment/clients/clearml_agent_setup/frontier/clearml.conf
 
 # OLCF compute nodes require a proxy for outbound internet
 export http_proxy=http://proxy.ccs.ornl.gov:3128
