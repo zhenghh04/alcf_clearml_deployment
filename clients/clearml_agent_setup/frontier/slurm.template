@@ -1,0 +1,30 @@
+#!/bin/bash -l
+#SBATCH --job-name=clearml_${CLEARML_TASK.id}
+#SBATCH --time=${CLEARML_TASK.hyperparams.properties.walltime.value:00:30:00}
+#SBATCH --nodes=${CLEARML_TASK.hyperparams.properties.num_nodes.value:1}
+#SBATCH --ntasks-per-node=${CLEARML_TASK.hyperparams.properties.ntasks_per_node.value:8}
+#SBATCH --gpus-per-node=${CLEARML_TASK.hyperparams.properties.gpus_per_node.value:8}
+#SBATCH --account=${CLEARML_TASK.hyperparams.properties.account.value:CSC708}
+#SBATCH --partition=${CLEARML_TASK.hyperparams.properties.partition.value:batch}
+#SBATCH --output=clearml_%j.out
+
+# Point to the correct ClearML config — avoids picking up any old ~/.clearml.conf
+
+# OLCF compute nodes require a proxy for outbound internet
+export http_proxy=http://proxy.ccs.ornl.gov:3128
+export https_proxy=http://proxy.ccs.ornl.gov:3128
+export HTTP_PROXY=http://proxy.ccs.ornl.gov:3128
+export HTTPS_PROXY=http://proxy.ccs.ornl.gov:3128
+
+# Activate the ClearML Python environment so the right Python is in PATH
+source $HOME/clearml/alcf_clearml_deployment/clients/clearml_agent_setup/frontier/conda.sh
+
+# Skip pip/venv install and use the pre-built venv directly (extra_docker_arguments don't apply to bare-metal)
+export CLEARML_AGENT_SKIP_PYTHON_ENV_INSTALL=1
+export CLEARML_AGENT_SKIP_PIP_VENV_INSTALL=$HOME/clearml/alcf_clearml_deployment/clients/clearml_agent_setup/frontier/envs/clearml/bin/python
+
+${CLEARML_PRE_SETUP}
+
+${CLEARML_AGENT_EXECUTE}
+
+${CLEARML_POST_SETUP}
