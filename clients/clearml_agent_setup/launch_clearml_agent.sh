@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set +x
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLIENT="${CLIENT:-sirius}"
@@ -38,7 +39,7 @@ if [[ -f "${SYSTEM_CONF}" ]]; then
   SCHEDULER="${SCHEDULER_ENV_OVERRIDE:-${SCHEDULER:-}}"
 fi
 SCHEDULER="${SCHEDULER:-pbs}"   # one of: pbs, slurm
-
+echo "SCHEDULER: ${SCHEDULER}"
 stop_daemons() {
   pkill clearml-agent-slurm || true
   pkill clearml-agent || true
@@ -47,6 +48,7 @@ stop_daemons() {
 run_daemons() {
   echo "Starting ClearML agent with client=${CLIENT} scheduler=${SCHEDULER}"
   # shellcheck disable=SC1090
+  echo "Loading conda environment $CLIENT_DIR/conda.sh"
   source "${CLIENT_DIR}/conda.sh"
 
   export CLEARML_AGENT_SKIP_PIP_VENV_INSTALL="$(which python3)"
