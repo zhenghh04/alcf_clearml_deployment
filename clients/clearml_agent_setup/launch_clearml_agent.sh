@@ -41,8 +41,9 @@ fi
 SCHEDULER="${SCHEDULER:-pbs}"   # one of: pbs, slurm
 echo "SCHEDULER: ${SCHEDULER}"
 stop_daemons() {
-  pkill clearml-agent-slurm || true
-  pkill clearml-agent || true
+    pkill -f "clearml-agent daemon" 2>/dev/null || true
+    pkill -f "clearml-agent-slurm" 2>/dev/null || true
+    sleep 2    
 }
 
 run_daemons() {
@@ -87,9 +88,9 @@ run_daemons() {
   esac
 
   stop_daemons
-  nohup clearml-agent-slurm "${launcher_args[@]}" &
-  nohup clearml-agent daemon --detached --queue "${LOGIN_QUEUE}" &
-  nohup clearml-agent daemon --detached --services-mode --queue "${SERVICES_QUEUE}" &
+  CLEARML_WORKER_ID=${LOGIN_QUEUE}:${HOSTNAME} clearml-agent daemon --detached --queue "${LOGIN_QUEUE}" 
+  CLEARML_WORKER_ID=${SERVICES_QUEUE}:${HOSTNAME} clearml-agent daemon --detached --services-mode --queue "${SERVICES_QUEUE}" 
+  CLEARML_WORKER_ID=${QUEUE}:${HOSTNAME} clearml-agent-slurm "${launcher_args[@]}" &  
 
   echo "Submitted daemon queues:"
   echo "  scheduler queue: ${QUEUE}"
