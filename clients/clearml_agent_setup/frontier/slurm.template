@@ -6,6 +6,7 @@
 #SBATCH --gpus-per-node=${CLEARML_TASK.hyperparams.properties.gpus_per_node.value:8}
 #SBATCH --account=${CLEARML_TASK.hyperparams.properties.account.value:CSC708}
 #SBATCH --partition=${CLEARML_TASK.hyperparams.properties.partition.value:batch}
+${CLEARML_TASK.hyperparams.properties.extra_sbatch.value:# (no extra sbatch directives)}
 #SBATCH --output=clearml_%j.out
 
 # Point to the correct ClearML config — avoids picking up any old ~/.clearml.conf

@@ -12,4 +12,5 @@ export K8S_GLUE_POD_AGENT_INSTALL_ARGS="==2.0.7rc5"
 
 echo "I am assuming that this is on your laptop or a system that is not a login node of a cluster."
 pkill clearml-agent
-nohup clearml-agent daemon --detached --queue ${QUEUE:-$CLIENT} &
+clearml-agent daemon --detached --queue ${QUEUE:-$CLIENT-services} --create-queue
+clearml-agent daemon --detached --services-mode --queue ${QUEUE:-$CLIENT-login} --create-queue

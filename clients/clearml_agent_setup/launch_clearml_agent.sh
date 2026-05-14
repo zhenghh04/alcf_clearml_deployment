@@ -38,12 +38,23 @@ if [[ -f "${SYSTEM_CONF}" ]]; then
   source "${SYSTEM_CONF}"
   SCHEDULER="${SCHEDULER_ENV_OVERRIDE:-${SCHEDULER:-}}"
 fi
-SCHEDULER="${SCHEDULER:-pbs}"   # one of: pbs, slurm
+SCHEDULER="${SCHEDULER:-pbs}"   # one of: pbs, slurm, services
 echo "SCHEDULER: ${SCHEDULER}"
+
+# services-only mode (e.g. Cerebras user node): no PBS/Slurm glue, no
+# separate login daemon -- the user node IS the entry point and one
+# --services-mode daemon handles everything.
+SKIP_SCHED_LAUNCHER=""
+SKIP_LOGIN_DAEMON=""
+if [[ "${SCHEDULER}" == "services" ]]; then
+  SKIP_SCHED_LAUNCHER=1
+  SKIP_LOGIN_DAEMON=1
+fi
+
 stop_daemons() {
     pkill -f "clearml-agent daemon" 2>/dev/null || true
     pkill -f "clearml-agent-slurm" 2>/dev/null || true
-    sleep 2    
+    sleep 2
 }
 
 run_daemons() {
@@ -56,45 +67,55 @@ run_daemons() {
   export CLEARML_AGENT_SKIP_PYTHON_ENV_INSTALL=1
   export K8S_GLUE_POD_AGENT_INSTALL_ARGS="==2.0.7rc5"
 
-  template_candidates=(
-    "${CLIENT_DIR}/${SCHEDULER}.template"
-    "${SCRIPT_DIR}/${SCHEDULER}.template"
-  )
+  if [[ -z "${SKIP_SCHED_LAUNCHER}" ]]; then
+    template_candidates=(
+      "${CLIENT_DIR}/${SCHEDULER}.template"
+      "${SCRIPT_DIR}/${SCHEDULER}.template"
+    )
 
-  TEMPLATE_FILE=""
-  for candidate in "${template_candidates[@]}"; do
-    if [[ -f "${candidate}" ]]; then
-      TEMPLATE_FILE="${candidate}"
-      break
+    TEMPLATE_FILE=""
+    for candidate in "${template_candidates[@]}"; do
+      if [[ -f "${candidate}" ]]; then
+        TEMPLATE_FILE="${candidate}"
+        break
+      fi
+    done
+
+    if [[ -z "${TEMPLATE_FILE}" ]]; then
+      echo "ERROR: no ${SCHEDULER}.template found under ${CLIENT_DIR} or ${SCRIPT_DIR}" >&2
+      exit 1
     fi
-  done
 
-  if [[ -z "${TEMPLATE_FILE}" ]]; then
-    echo "ERROR: no ${SCHEDULER}.template found under ${CLIENT_DIR} or ${SCRIPT_DIR}" >&2
-    exit 1
+    launcher_args=(--template-files "${TEMPLATE_FILE}" --queue "${QUEUE}")
+    case "${SCHEDULER}" in
+      pbs)
+        launcher_args+=(--use-pbs)
+        ;;
+      slurm)
+        ;;
+      *)
+        echo "ERROR: unsupported SCHEDULER='${SCHEDULER}'. Use pbs, slurm, or services." >&2
+        exit 1
+        ;;
+    esac
   fi
 
-  launcher_args=(--template-files "${TEMPLATE_FILE}" --queue "${QUEUE}")
-  case "${SCHEDULER}" in
-    pbs)
-      launcher_args+=(--use-pbs)
-      ;;
-    slurm)
-      ;;
-    *)
-      echo "ERROR: unsupported SCHEDULER='${SCHEDULER}'. Use pbs or slurm." >&2
-      exit 1
-      ;;
-  esac
-
   stop_daemons
-  CLEARML_WORKER_ID=${LOGIN_QUEUE}:${HOSTNAME} clearml-agent daemon --detached --queue "${LOGIN_QUEUE}" 
-  CLEARML_WORKER_ID=${SERVICES_QUEUE}:${HOSTNAME} clearml-agent daemon --detached --services-mode --queue "${SERVICES_QUEUE}" 
-  CLEARML_WORKER_ID=${QUEUE}:${HOSTNAME} clearml-agent-slurm "${launcher_args[@]}" &  
+  if [[ -z "${SKIP_LOGIN_DAEMON}" ]]; then
+    CLEARML_WORKER_ID=${LOGIN_QUEUE}:${HOSTNAME} clearml-agent daemon --detached --queue "${LOGIN_QUEUE}"
+  fi
+  CLEARML_WORKER_ID=${SERVICES_QUEUE}:${HOSTNAME} clearml-agent daemon --detached --services-mode --queue "${SERVICES_QUEUE}"
+  if [[ -z "${SKIP_SCHED_LAUNCHER}" ]]; then
+    CLEARML_WORKER_ID=${QUEUE}:${HOSTNAME} clearml-agent-slurm "${launcher_args[@]}" &
+  fi
 
   echo "Submitted daemon queues:"
-  echo "  scheduler queue: ${QUEUE}"
-  echo "  login queue:     ${LOGIN_QUEUE}"
+  if [[ -z "${SKIP_SCHED_LAUNCHER}" ]]; then
+    echo "  scheduler queue: ${QUEUE}"
+  fi
+  if [[ -z "${SKIP_LOGIN_DAEMON}" ]]; then
+    echo "  login queue:     ${LOGIN_QUEUE}"
+  fi
   echo "  services queue:  ${SERVICES_QUEUE}"
 }
 
