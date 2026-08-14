@@ -1,0 +1,14 @@
+#!/bin/bash
+#PBS -N clearml_${CLEARML_TASK.id}
+#PBS -l walltime=${CLEARML_TASK.hyperparams.properties.walltime.value:01:00:00}
+#PBS -l select=${CLEARML_TASK.hyperparams.properties.num_nodes.value:1}:ncpus=288:ngpus=4
+#PBS -l place=scatter:excl
+#PBS -V
+#PBS -A ${CLEARML_TASK.hyperparams.properties.account.value:M4966}
+#PBS -q ${CLEARML_TASK.hyperparams.properties.queue.value:workq}
+
+${CLEARML_PRE_SETUP}
+
+${CLEARML_AGENT_EXECUTE}
+
+${CLEARML_POST_SETUP}
