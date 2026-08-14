@@ -1,26 +1,45 @@
-# ALCF GitLab-CI: keep the Aurora ClearML agent persistent.
+# ALCF GitLab-CI: keep the ClearML agents persistent across the fleet.
 #
-# Aurora login nodes have no crond/no tmux, so nothing re-runs the agent
-# watchdog. A GitLab-CI *pipeline schedule* IS that missing cron: it runs the
-# single-shot watchdog on an Aurora login node, as the triggering user (hzheng),
-# via the Jacamar shell executor. Each scheduled run relaunches the agent if any
-# daemon (login / services / PBS launcher) is dead. Survives a login-node reboot
-# because the next scheduled run brings it back up.
+# ALCF/DOE login nodes have no reliable crond/tmux, so nothing re-runs the agent
+# watchdog on its own. A GitLab-CI *pipeline schedule* IS that missing cron: for
+# each system it runs the generic single-shot watchdog on that system's login
+# node, as the triggering user (hzheng), via the Jacamar shell executor. Each
+# scheduled run relaunches the agent if any expected daemon (login / services /
+# PBS launcher) is dead. Survives a login-node reboot -- the next scheduled run
+# brings it back up.
 #
-# SETUP (one time):
-#   1. Push/mirror this repo to a project on https://gitlab-ci.alcf.anl.gov
-#      (Settings > Repository > Mirroring repositories, or push directly).
-#   2. Build > Pipeline schedules > New schedule:
-#        - Interval pattern (custom cron):  */20 * * * *   (every 20 min)
-#        - Target branch:                   main
-#        - Activated:                       yes
-#      The schedule's owner becomes the triggering user the agent runs as.
-#   3. Runner template is `.aurora-shell-runner` (verified in anl/ci-resources/
-#      defaults/runners.yml: tags [shell, aurora], inherits the CI_JOB_JWT
-#      id-token). No change needed.
-#   4. Ensure non-interactive ssh from any Aurora login node to the canonical
-#      node works: `ssh -o BatchMode=yes aurora-uan-0012 true` must succeed
-#      (add an ssh key to ~/.ssh/authorized_keys on Aurora if it prompts).
+# ONE generic watchdog (clients/clearml_agent_setup/watchdog.sh), keyed on
+# CLIENT (mirrors launch_clearml_agent.sh). It derives its expected daemon set
+# from <CLIENT>/system.conf, so it can never thrash on a system running fewer
+# daemons. Piped over ssh into the pinned node so it needs no checkout there and
+# never drifts from a stale on-disk copy; running over ssh also detaches the
+# relaunched daemon from the CI job's cgroup so it survives the job ending, and
+# canonicalizes the login node so a floating runner never forks a 2nd agent.
+#
+# SETUP (one time for the whole fleet):
+#   Build > Pipeline schedules > New schedule:
+#     - Interval pattern (custom cron): */20 * * * *   (every 20 min)
+#     - Target branch:                  main
+#     - Activated:                      yes
+#   ONE schedule fans out to every system: each job below is bound to its own
+#   system's shell runner, so a single pipeline dispatches the aurora job to an
+#   aurora runner, the crux job to a crux runner, etc. The schedule's owner is
+#   the user the agent runs as.
+#   To exercise a single system on demand: Build > Pipelines > Run pipeline and
+#   add variable SYS=<aurora|crux|polaris|sirius> (unset => all systems run).
+#
+# Per-system prerequisites verified 2026-08-14 (census via <sys>-services):
+#   Runner templates .{aurora,crux,polaris,sirius}-shell-runner all exist in
+#   anl/ci-resources/defaults/runners.yml (tags [shell, <sys>]).
+#   Canonical login node (where the live agent runs / is pinned) + census:
+#     aurora  -> aurora-uan-0012   3 daemons live
+#     polaris -> polaris-login-01  3 daemons live  (also has a systemd unit;
+#                                                   watchdog adds crash recovery)
+#     sirius  -> sirius-uan-0002   3 daemons live
+#     crux    -> crux-uan-0002     agent DEAD now (pin per systems/crux.yaml;
+#                                  first run revives it)
+#   Non-interactive node->node ssh must work from the runner's landing node to
+#   the pinned node: `ssh -o BatchMode=yes <node> true` (host-based auth).
 
 include:
   - project: 'anl/ci-resources/defaults'
@@ -30,24 +49,44 @@ include:
 stages:
   - watchdog
 
-clearml_agent_watchdog_aurora:
+# Shared behavior. Concrete jobs add a runner via `extends` and set AGENT_NODE +
+# CLIENT. Runs on schedule/web triggers only (never on pushes/MRs). If the
+# optional $SYS variable is set it targets a single system; unset => all run.
+# allow_failure keeps one system's runner hiccup from failing the others.
+.watchdog:
   stage: watchdog
-  extends: .aurora-shell-runner
-  # Only fire on the pipeline schedule (the "cron"), plus manual web runs for
-  # testing. Never on ordinary pushes/MRs.
+  allow_failure: true
   rules:
+    - if: '$SYS && $SYS != $CLIENT'
+      when: never
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
     - if: '$CI_PIPELINE_SOURCE == "web"'
   script:
-    # Jacamar's shell runner lands on *some* login node; canonicalize to the
-    # pinned node so we never fork a second agent on a different login node.
-    # Running the watchdog over ssh also detaches the relaunched daemon from the
-    # CI job's process tree/cgroup, so it survives the job ending.
-    - echo "CI runner on $(hostname); canonicalizing agent host -> aurora-uan-0012"
-    # Pipe THIS repo's watchdog (single source of truth) into bash on the pinned
-    # node. The watchdog uses absolute $HOME paths for the launcher/venv, so it
-    # does not need to be checked out on Aurora -- this avoids drift from any
-    # stale on-disk copy (Aurora's clone tracks a different remote).
-    - ssh -o BatchMode=yes aurora-uan-0012 'bash -s' < clients/clearml_agent_setup/aurora/watchdog.sh
+    - echo "CI runner on $(hostname); canonicalizing agent host -> $AGENT_NODE (CLIENT=$CLIENT)"
+    - ssh -o BatchMode=yes "$AGENT_NODE" "CLIENT=$CLIENT bash -s" < clients/clearml_agent_setup/watchdog.sh
     - echo "watchdog dispatched; recent log tail:"
-    - ssh -o BatchMode=yes aurora-uan-0012 'tail -n 20 $HOME/clearml_watchdog_aurora.log 2>/dev/null || true'
+    - ssh -o BatchMode=yes "$AGENT_NODE" "tail -n 20 \$HOME/clearml_watchdog_$CLIENT.log 2>/dev/null || true"
+
+clearml_agent_watchdog_aurora:
+  extends: [.aurora-shell-runner, .watchdog]
+  variables:
+    AGENT_NODE: aurora-uan-0012
+    CLIENT: aurora
+
+clearml_agent_watchdog_polaris:
+  extends: [.polaris-shell-runner, .watchdog]
+  variables:
+    AGENT_NODE: polaris-login-01
+    CLIENT: polaris
+
+clearml_agent_watchdog_sirius:
+  extends: [.sirius-shell-runner, .watchdog]
+  variables:
+    AGENT_NODE: sirius-uan-0002
+    CLIENT: sirius
+
+clearml_agent_watchdog_crux:
+  extends: [.crux-shell-runner, .watchdog]
+  variables:
+    AGENT_NODE: crux-uan-0002
+    CLIENT: crux
