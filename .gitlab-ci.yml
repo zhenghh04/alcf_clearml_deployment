@@ -1,0 +1,49 @@
+# ALCF GitLab-CI: keep the Aurora ClearML agent persistent.
+#
+# Aurora login nodes have no crond/no tmux, so nothing re-runs the agent
+# watchdog. A GitLab-CI *pipeline schedule* IS that missing cron: it runs the
+# single-shot watchdog on an Aurora login node, as the triggering user (hzheng),
+# via the Jacamar shell executor. Each scheduled run relaunches the agent if any
+# daemon (login / services / PBS launcher) is dead. Survives a login-node reboot
+# because the next scheduled run brings it back up.
+#
+# SETUP (one time):
+#   1. Push/mirror this repo to a project on https://gitlab-ci.alcf.anl.gov
+#      (Settings > Repository > Mirroring repositories, or push directly).
+#   2. Build > Pipeline schedules > New schedule:
+#        - Interval pattern (custom cron):  */20 * * * *   (every 20 min)
+#        - Target branch:                   main
+#        - Activated:                       yes
+#      The schedule's owner becomes the triggering user the agent runs as.
+#   3. Confirm the shell-runner template name in the included runners.yml
+#      (Polaris's is `.polaris-shell-runner`; Aurora's is expected to be
+#      `.aurora-shell-runner`). Adjust `extends:` below if it differs.
+#   4. Ensure non-interactive ssh from any Aurora login node to the canonical
+#      node works: `ssh -o BatchMode=yes aurora-uan-0012 true` must succeed
+#      (add an ssh key to ~/.ssh/authorized_keys on Aurora if it prompts).
+
+include:
+  - project: 'anl/ci-resources/defaults'
+    ref: main
+    file: '/runners.yml'
+
+stages:
+  - watchdog
+
+clearml_agent_watchdog_aurora:
+  stage: watchdog
+  extends: .aurora-shell-runner
+  # Only fire on the pipeline schedule (the "cron"), plus manual web runs for
+  # testing. Never on ordinary pushes/MRs.
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+  script:
+    # Jacamar's shell runner lands on *some* login node; canonicalize to the
+    # pinned node so we never fork a second agent on a different login node.
+    # Running the watchdog over ssh also detaches the relaunched daemon from the
+    # CI job's process tree/cgroup, so it survives the job ending.
+    - echo "CI runner on $(hostname); canonicalizing agent host -> aurora-uan-0012"
+    - ssh -o BatchMode=yes aurora-uan-0012 'bash $HOME/clearml/alcf_clearml_deployment/clients/clearml_agent_setup/aurora/watchdog.sh'
+    - echo "watchdog dispatched; recent log tail:"
+    - ssh -o BatchMode=yes aurora-uan-0012 'tail -n 20 $HOME/clearml_watchdog_aurora.log 2>/dev/null || true'
