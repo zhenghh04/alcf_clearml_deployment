@@ -15,9 +15,9 @@
 #        - Target branch:                   main
 #        - Activated:                       yes
 #      The schedule's owner becomes the triggering user the agent runs as.
-#   3. Confirm the shell-runner template name in the included runners.yml
-#      (Polaris's is `.polaris-shell-runner`; Aurora's is expected to be
-#      `.aurora-shell-runner`). Adjust `extends:` below if it differs.
+#   3. Runner template is `.aurora-shell-runner` (verified in anl/ci-resources/
+#      defaults/runners.yml: tags [shell, aurora], inherits the CI_JOB_JWT
+#      id-token). No change needed.
 #   4. Ensure non-interactive ssh from any Aurora login node to the canonical
 #      node works: `ssh -o BatchMode=yes aurora-uan-0012 true` must succeed
 #      (add an ssh key to ~/.ssh/authorized_keys on Aurora if it prompts).
@@ -44,6 +44,10 @@ clearml_agent_watchdog_aurora:
     # Running the watchdog over ssh also detaches the relaunched daemon from the
     # CI job's process tree/cgroup, so it survives the job ending.
     - echo "CI runner on $(hostname); canonicalizing agent host -> aurora-uan-0012"
-    - ssh -o BatchMode=yes aurora-uan-0012 'bash $HOME/clearml/alcf_clearml_deployment/clients/clearml_agent_setup/aurora/watchdog.sh'
+    # Pipe THIS repo's watchdog (single source of truth) into bash on the pinned
+    # node. The watchdog uses absolute $HOME paths for the launcher/venv, so it
+    # does not need to be checked out on Aurora -- this avoids drift from any
+    # stale on-disk copy (Aurora's clone tracks a different remote).
+    - ssh -o BatchMode=yes aurora-uan-0012 'bash -s' < clients/clearml_agent_setup/aurora/watchdog.sh
     - echo "watchdog dispatched; recent log tail:"
     - ssh -o BatchMode=yes aurora-uan-0012 'tail -n 20 $HOME/clearml_watchdog_aurora.log 2>/dev/null || true'
