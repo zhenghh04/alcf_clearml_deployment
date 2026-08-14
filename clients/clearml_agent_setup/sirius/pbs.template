@@ -3,10 +3,17 @@
 #PBS -l walltime=${CLEARML_TASK.hyperparams.properties.walltime.value:01:00:00}
 #PBS -l select=${CLEARML_TASK.hyperparams.properties.num_nodes.value:1}:ncpus=1
 #PBS -l place=scatter
-#PBS -V 
+#PBS -V
 #PBS -A ${CLEARML_TASK.hyperparams.properties.account.value:datascience}
 #PBS -q ${CLEARML_TASK.hyperparams.properties.queue.value:workq}
-#PBS -l filesystems=${CLEARML_TASK.hyperparams.filesystems.value:home:tegu}
+#PBS -l filesystems=${CLEARML_TASK.hyperparams.filesystems.value:home}
+
+# ALCF proxy — required for pip/git on Sunspot compute nodes
+export http_proxy=http://proxy.alcf.anl.gov:3128
+export https_proxy=http://proxy.alcf.anl.gov:3128
+export HTTP_PROXY=http://proxy.alcf.anl.gov:3128
+export HTTPS_PROXY=http://proxy.alcf.anl.gov:3128
+export no_proxy=localhost,127.0.0.1,*.alcf.anl.gov,amscclearml.alcf.anl.gov
 
 ${CLEARML_PRE_SETUP}
 
