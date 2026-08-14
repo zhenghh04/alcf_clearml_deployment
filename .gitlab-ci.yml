@@ -26,11 +26,11 @@
 #   aurora runner, the crux job to a crux runner, etc. The schedule's owner is
 #   the user the agent runs as.
 #   To exercise a single system on demand: Build > Pipelines > Run pipeline and
-#   add variable SYS=<aurora|crux|polaris|sirius> (unset => all systems run).
+#   add variable SYS=<aurora|crux|polaris|sirius|sunspot> (unset => all run).
 #
 # Per-system prerequisites verified 2026-08-14 (census via <sys>-services):
-#   Runner templates .{aurora,crux,polaris,sirius}-shell-runner all exist in
-#   anl/ci-resources/defaults/runners.yml (tags [shell, <sys>]).
+#   Runner templates .{aurora,crux,polaris,sirius,sunspot}-shell-runner all exist
+#   in anl/ci-resources/defaults/runners.yml (tags [shell, <sys>]).
 #   Canonical login node (where the live agent runs / is pinned) + census:
 #     aurora  -> aurora-uan-0012   3 daemons live
 #     polaris -> polaris-login-01  3 daemons live  (also has a systemd unit;
@@ -38,6 +38,11 @@
 #     sirius  -> sirius-uan-0002   3 daemons live
 #     crux    -> crux-uan-0002     agent DEAD now (pin per systems/crux.yaml;
 #                                  first run revives it)
+#     sunspot -> sunspot-uan-0002  agent DEAD now (126-task backlog; pin per
+#                                  systems/sunspot.yaml; first run revives it.
+#                                  system.conf=pbs => generic watchdog expects 3
+#                                  daemons; if the PBS launcher can't stay up the
+#                                  first run reveals it -- watch for thrash)
 #   Non-interactive node->node ssh must work from the runner's landing node to
 #   the pinned node: `ssh -o BatchMode=yes <node> true` (host-based auth).
 
@@ -90,3 +95,9 @@ clearml_agent_watchdog_crux:
   variables:
     AGENT_NODE: crux-uan-0002
     CLIENT: crux
+
+clearml_agent_watchdog_sunspot:
+  extends: [.sunspot-shell-runner, .watchdog]
+  variables:
+    AGENT_NODE: sunspot-uan-0002
+    CLIENT: sunspot
